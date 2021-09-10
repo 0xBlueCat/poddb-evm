@@ -20,12 +20,20 @@
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
     "solhint": "^3.3.6",
-    "solidity-coverage": "^0.7.17"
+    "solidity-coverage": "^0.7.17",
+    "ts-node": "^10.0.0"
   },
   "scripts": {
-    "start": "node ./src/index.js"
+    "start": "ts-node ./src/index.ts",
+    "build": "tsc",
+    "fix": "prettier --write \"src/**/*.ts\""
   },
   "version": "1.0.0",
-  "main": "./src/index.js",
-  "license": "MIT"
+  "main": "./dist/index.js",
+  "license": "MIT",
+  "dependencies": {
+    "jest": "^27.1.1",
+    "ts-node-dev": "^1.1.8",
+    "typescript": "^4.4.2"
+  }
 }
