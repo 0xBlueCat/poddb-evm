@@ -65,6 +65,11 @@ contract dTag {
         bytes20 Agent; //agent have the same permission with the tagSchema owner
     }
 
+    struct TagObject {
+        address Address; //EOA address, contract address, even tagSchemaId
+        uint256 TokenId; //NFT tokenId
+    }
+
     event CreateTagSchema(
         bytes20 schemaId,
         string name,
@@ -90,9 +95,9 @@ contract dTag {
     event DeleteTagSchema(bytes20 schemaId);
 
     event AddTag(
+        TagObject object,
         bytes20 schemaId,
         bytes20 id,
-        address owner,
         address issuer,
         bytes data
     );
@@ -125,18 +130,16 @@ contract dTag {
 
     function genTagId(
         bytes20 schemaId,
-        address addr,
+        TagObject calldata object,
         bool unique
-    ) external view returns (bytes20 id) {
+    ) internal view returns (bytes20 id) {
         WriteBuffer.buffer memory wBuf;
-        if (unique) {
-            wBuf.init(40).writeBytes20(schemaId).writeAddress(addr);
-        } else {
-            wBuf
-                .init(72)
-                .writeBytes20(schemaId)
-                .writeAddress(addr)
-                .writeBytes32(blockhash(block.number - 1));
+        wBuf.init(128).writeBytes20(schemaId).writeAddress(object.Address);
+        if (object.TokenId != uint256(0)) {
+            wBuf.writeUint(object.TokenId);
+        }
+        if (!unique) {
+            wBuf.writeBytes32(blockhash(block.number - 1));
         }
         return bytes20(keccak256(wBuf.getBytes()));
     }
@@ -211,9 +214,9 @@ contract dTag {
     }
 
     function checkTagSchemaUpdateAuth(TagSchema storage schema)
-    internal
-    view
-    returns (bool)
+        internal
+        view
+        returns (bool)
     {
         if (schema.Owner == msg.sender) {
             return true;
@@ -226,13 +229,15 @@ contract dTag {
         if (schema.Agent.Type == AgentType.Address) {
             return schema.Agent.Agent == bytes20(msg.sender);
         }
-        return this.hasTag(schema.Agent.Agent, msg.sender);
+        TagObject memory object;
+        object.Address = msg.sender;
+        return this.hasTag(schema.Agent.Agent, object);
     }
 
     function checkTagSchemaIssuerAuth(TagSchema storage schema)
-    internal
-    view
-    returns (bool)
+        internal
+        view
+        returns (bool)
     {
         if (schema.IsPublic) {
             return true;
@@ -241,9 +246,9 @@ contract dTag {
     }
 
     function checkTagUpdateAuth(TagSchema storage schema, address tagIssuer)
-    internal
-    view
-    returns (bool)
+        internal
+        view
+        returns (bool)
     {
         if (schema.IsPublic) {
             return tagIssuer == msg.sender;
@@ -321,14 +326,7 @@ contract dTag {
         schema.IsPublic = isPublic;
         schema.Agent = agent;
 
-        emit UpdateTagSchema(
-            schemaId,
-            tagName,
-            desc,
-            gasFee,
-            isPublic,
-            agent
-        );
+        emit UpdateTagSchema(schemaId, tagName, desc, gasFee, isPublic, agent);
     }
 
     function deleteTagSchema(bytes20 schemaId) external {
@@ -353,19 +351,21 @@ contract dTag {
         return tagSchemas[tagSchemaId];
     }
 
-    function addTagToAddress(
+    function addTag(
         bytes20 tagSchemaId,
-        address addr,
+        TagObject calldata object,
         bytes calldata data
     ) external {
         TagSchema storage tagSchema = tagSchemas[tagSchemaId];
         require(tagSchema.Id != bytes20(0), "invalid tagSchemaId");
+
         require(
             checkTagSchemaIssuerAuth(tagSchema),
             "invalid tagSchema issuer permission"
         );
 
-        bytes20 tagId = this.genTagId(tagSchemaId, addr, tagSchema.Unique);
+        bytes20 tagId = genTagId(tagSchemaId, object, tagSchema.Unique);
+
         Tag storage tag = tags[tagId];
         require(tag.SchemaId == bytes20(0), "tag has already exist");
 
@@ -375,12 +375,12 @@ contract dTag {
         tag.Id = tagId;
         tag.Issuer = msg.sender;
         tag.Data = data;
-        tag.SchemaId = tagSchemaId;
+        tag.SchemaId = tagSchema.Id;
         tag.UpdateAt = uint64(block.number);
 
         tagSchema.Count++;
 
-        emit AddTag(tag.SchemaId, tagId, addr, tag.Issuer, tag.Data);
+        emit AddTag(object, tagSchemaId, tagId, tag.Issuer, data);
     }
 
     function updateTag(bytes20 tagId, bytes calldata data) external {
@@ -420,22 +420,6 @@ contract dTag {
         emit DeleteTag(tagId);
     }
 
-    function addTagToNFT(
-        bytes20 tagSchemaId,
-        address contractAddress,
-        string calldata assetId,
-        bytes calldata data
-    ) external {
-        //        TagSchema memory tagSchema = tagSchemas[tagSchemaId];
-        //        require(tagSchema.Id != bytes20(0), "invalid tagSchemaId");
-    }
-
-    function addTagToTagSchema(
-        address tagSchemaId,
-        address destTagSchemaId,
-        bytes calldata data
-    ) external {}
-
     function getTag(bytes20 tagId)
         external
         view
@@ -452,22 +436,22 @@ contract dTag {
         return (tag, valid);
     }
 
-    function getTag(bytes20 tagSchemaId, address addr)
+    function getTag(bytes20 tagSchemaId, TagObject calldata object)
         external
         view
         returns (Tag memory tag, bool valid)
     {
-        bytes20 tagId = this.genTagId(tagSchemaId, addr, true);
+        bytes20 tagId = genTagId(tagSchemaId, object, true);
         return this.getTag(tagId);
     }
 
-    function hasTag(bytes20 tagSchemaId, address addr)
+    function hasTag(bytes20 tagSchemaId, TagObject calldata object)
         external
         view
         returns (bool)
     {
         bool valid;
-        (, valid) = this.getTag(tagSchemaId,addr);
+        (, valid) = this.getTag(tagSchemaId, object);
         return valid;
     }
 }
