@@ -37,11 +37,11 @@ contract dTag {
         address Owner; // user address or contract address
         bytes Fields; // format Number fieldName_1 fieldType fieldName_2 fieldType fieldName_n fieldType
         string Desc;
+        bool CanInherit; // If true, when a contract have a tag, all of nft mint by this contact will inherit this tag automatic
         bool Unique; // If true, an owner can only has one tag of a tagSchema，most case is true.
         bool IsPublic; //where tag issuer must be the Owner of TagSchema, if TagSchema is public, every one can issue the tag
         uint32 Count; // tag count of current schema
         uint32 ExpiredTime; //expired time of tag, until tag update, 0 mean tag won't expiration.
-        uint32 GasFee;
         uint64 CreateAt;
         TagAgent Agent;
     }
@@ -76,10 +76,10 @@ contract dTag {
         address owner,
         bytes fields,
         string desc,
+        bool canInherit,
         bool unique,
         bool isPublic,
         uint32 expiredTime,
-        uint32 gasFee,
         TagAgent agent
     );
 
@@ -87,7 +87,7 @@ contract dTag {
         bytes20 schemaId,
         string name,
         string desc,
-        uint32 gasFee,
+        bool canInherit,
         bool isPublic,
         TagAgent agent
     );
@@ -103,7 +103,6 @@ contract dTag {
     );
 
     event UpdateTag(bytes20 id, bytes data);
-
     event DeleteTag(bytes20 id);
 
     mapping(bytes20 => TagSchema) private tagSchemas;
@@ -130,7 +129,7 @@ contract dTag {
 
     function genTagId(
         bytes20 schemaId,
-        TagObject calldata object,
+        TagObject memory object,
         bool unique
     ) internal view returns (bytes20 id) {
         WriteBuffer.buffer memory wBuf;
@@ -260,10 +259,10 @@ contract dTag {
         string calldata tagName,
         bytes calldata fields,
         string calldata desc,
+        bool canInherit,
         bool unique,
         bool isPublic,
         uint32 expiredTime,
-        uint32 gasFee,
         TagAgent calldata agent
     ) external validateTagSchema(fields) {
         bytes20 schemaId = this.genTagSchemaId();
@@ -275,9 +274,9 @@ contract dTag {
         schema.Owner = msg.sender;
         schema.Fields = fields;
         schema.Desc = desc;
+        schema.CanInherit = canInherit;
         schema.Unique = unique;
         schema.IsPublic = isPublic;
-        schema.GasFee = gasFee;
         schema.ExpiredTime = expiredTime;
         schema.CreateAt = uint64(block.number);
         schema.Agent = agent;
@@ -289,10 +288,10 @@ contract dTag {
             schema.Owner,
             schema.Fields,
             schema.Desc,
+            schema.CanInherit,
             schema.IsPublic,
             schema.Unique,
             schema.ExpiredTime,
-            schema.GasFee,
             schema.Agent
         );
     }
@@ -301,7 +300,7 @@ contract dTag {
         bytes20 schemaId,
         string calldata tagName,
         string calldata desc,
-        uint32 gasFee,
+        bool canInherit,
         bool isPublic,
         TagAgent calldata agent
     ) external {
@@ -322,11 +321,18 @@ contract dTag {
 
         schema.TagName = tagName;
         schema.Desc = desc;
-        schema.GasFee = gasFee;
+        schema.CanInherit = canInherit;
         schema.IsPublic = isPublic;
         schema.Agent = agent;
 
-        emit UpdateTagSchema(schemaId, tagName, desc, gasFee, isPublic, agent);
+        emit UpdateTagSchema(
+            schemaId,
+            tagName,
+            desc,
+            canInherit,
+            isPublic,
+            agent
+        );
     }
 
     function deleteTagSchema(bytes20 schemaId) external {
@@ -442,6 +448,22 @@ contract dTag {
         returns (Tag memory tag, bool valid)
     {
         bytes20 tagId = genTagId(tagSchemaId, object, true);
+        (tag, valid) = this.getTag(tagId);
+        if (valid) {
+            return (tag, valid);
+        }
+        if (object.TokenId == uint256(0)) {
+            //non-nft
+            return (tag, valid);
+        }
+        TagSchema memory tagSchema = tagSchemas[tag.SchemaId];
+        if (!tagSchema.CanInherit) {
+            return (tag, valid);
+        }
+        //check whether inherit from contact
+        TagObject memory contractObj;
+        contractObj.Address = object.Address;
+        tagId = genTagId(tagSchemaId, contractObj, true);
         return this.getTag(tagId);
     }
 
