@@ -246,7 +246,7 @@ library WriteBuffer {
         pure
         returns (buffer memory)
     {
-        writeVarUint(buf, data.length, 4);
+        writeVarUint(buf, data.length, 2);
         return writeFixedBytes(buf, data);
     }
 

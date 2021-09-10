@@ -2,218 +2,281 @@
 pragma solidity ^0.8.0;
 import "./WriteBuffer.sol";
 import "./ReadBuffer.sol";
-import "./strings.sol";
-import "hardhat/console.sol";
 
 contract dTag {
     using WriteBuffer for WriteBuffer.buffer;
     using ReadBuffer for ReadBuffer.buffer;
-    using strings for *;
+
+    enum TagFieldType {
+        Bool,
+        Uint,
+        Uint8,
+        Uint16,
+        Uint32,
+        Uint64,
+        Int,
+        Int8,
+        Int16,
+        Int32,
+        Int64,
+        Bytes1,
+        Bytes2,
+        Bytes3,
+        Bytes4,
+        Bytes8,
+        Bytes20,
+        Bytes32,
+        Address,
+        Bytes,
+        String
+    }
 
     struct TagSchema {
         bytes20 Id; // TagSchema id;
         string TagName;
         address Owner; // user address or contract address
-        string Fields; // format fieldName_1:type;fieldName_2:type;fieldName_n:type
+        bytes Fields; // format Number fieldName_1 fieldType fieldName_2 fieldType fieldName_n fieldType
         string Desc;
         bool Unique; // If true, an owner can only has one tag of a tagSchema，most case is true.
+        bool IsPublic; //where tag issuer must be the Owner of TagSchema, if TagSchema is public, every one can issue the tag
+        uint32 Count; // tag count of current schema
+        uint32 ExpiredTime; //expired time of tag, until tag update, 0 mean tag won't expiration.
         uint32 GasFee;
+        uint64 CreateAt;
+        TagAgent Agent;
     }
 
     struct Tag {
-        bytes20 Id; //Tag id;
+        bytes20 Id; //Tag id
         bytes20 SchemaId;
-        address Owner;
+        address Issuer;
         bytes Data;
-        uint256 CreateAt;
+        uint64 UpdateAt;
+    }
+
+    enum AgentType {
+        Address, // user address or contract address,
+        Tag //address which had this tag
+    }
+
+    //TagSchemaAgent can delegate tagSchema owner permission to another contract or address which had an special tag
+    struct TagAgent {
+        AgentType Type; //indicate the of delegator
+        bytes20 Agent; //agent have the same permission with the tagSchema owner
     }
 
     event CreateTagSchema(
         bytes20 schemaId,
         string name,
         address owner,
-        string fields,
+        bytes fields,
         string desc,
         bool unique,
-        uint32 gasFee
+        bool isPublic,
+        uint32 expiredTime,
+        uint32 gasFee,
+        TagAgent agent
     );
 
-    event CreateTag(
+    event UpdateTagSchema(
+        bytes20 schemaId,
+        string name,
+        string desc,
+        uint32 gasFee,
+        bool isPublic,
+        TagAgent agent
+    );
+
+    event DeleteTagSchema(bytes20 schemaId);
+
+    event AddTag(
         bytes20 schemaId,
         bytes20 id,
         address owner,
-        bytes data,
-        uint256 createAt
+        address issuer,
+        bytes data
     );
 
-    uint256 nonce;
+    event UpdateTag(bytes20 id, bytes data);
+
+    event DeleteTag(bytes20 id);
+
     mapping(bytes20 => TagSchema) private tagSchemas;
     mapping(bytes20 => Tag) private tags;
 
-    function genTagSchemaId() external returns (bytes20 id) {
+    modifier validateTagSchema(bytes memory fieldTypes) {
+        ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(fieldTypes);
+        uint256 len = rBuf.readUint8();
+        for (uint256 i = 0; i < len; i++) {
+            require(rBuf.skipString() > 0, "field name cannot empty");
+            TagFieldType(rBuf.readUint8()); // can convert to TagFieldType
+        }
+        require(rBuf.left() == 0, "invalid fieldTypes");
+        _;
+    }
+
+    function genTagSchemaId() external view returns (bytes20 id) {
         WriteBuffer.buffer memory wBuf;
-        wBuf.init(52).writeAddress(msg.sender).writeUint(++nonce);
+        wBuf.init(52).writeAddress(msg.sender).writeBytes32(
+            blockhash(block.number - 1)
+        );
         return bytes20(keccak256(wBuf.getBytes()));
     }
 
     function genTagId(
         bytes20 schemaId,
-        address receiver,
+        address addr,
         bool unique
-    ) external returns (bytes20 id) {
+    ) external view returns (bytes20 id) {
         WriteBuffer.buffer memory wBuf;
-        wBuf.init(72).writeBytes20(schemaId).writeAddress(receiver);
-        if (!unique) {
-            wBuf.writeUint(++nonce);
+        if (unique) {
+            wBuf.init(40).writeBytes20(schemaId).writeAddress(addr);
+        } else {
+            wBuf
+                .init(72)
+                .writeBytes20(schemaId)
+                .writeAddress(addr)
+                .writeBytes32(blockhash(block.number - 1));
         }
         return bytes20(keccak256(wBuf.getBytes()));
     }
 
-    function genUniqueTagId(bytes20 schemaId, address receiver)
-        external
-        pure
-        returns (bytes20 id)
-    {
-        WriteBuffer.buffer memory wBuf;
-        wBuf.init(40).writeBytes20(schemaId).writeAddress(receiver);
-        return bytes20(keccak256(wBuf.getBytes()));
-    }
-
-    function getFieldTypes(string memory fieldSchema)
+    function getFieldTypes(bytes memory fieldTypes)
         public
         pure
-        returns (bytes[] memory)
+        returns (TagFieldType[] memory)
     {
-        strings.slice memory fields = fieldSchema.toSlice();
-        require(!fields.empty(), "fields cannot empty");
-
-        strings.slice memory delim1 = ";".toSlice();
-        strings.slice memory delim2 = ":".toSlice();
-        strings.slice memory field;
-        strings.slice memory item;
-        bytes[] memory types = new bytes[](fields.count(delim1) + 1);
-        uint256 index = 0;
-        for (uint256 i = 0; i < types.length; i++) {
-            field = fields.split(delim1);
-            require(!field.empty(), "field cannot empty");
-
-            item = field.split(delim2);
-            require(!item.empty(), "field name cannot empty");
-
-            item = field.split(delim2);
-            require(!item.empty(), "field type cannot empty");
-            types[index++] = bytes(item.toString());
-
-            item = field.split(delim2);
-            require(item.empty(), "invalid field type");
+        ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(fieldTypes);
+        uint256 len = rBuf.readUint8();
+        TagFieldType[] memory types = new TagFieldType[](len);
+        for (uint256 i = 0; i < len; i++) {
+            require(rBuf.skipString() > 0, "field name cannot empty");
+            types[i] = TagFieldType(rBuf.readUint8());
         }
+        require(rBuf.left() == 0, "invalid fieldTypes");
         return types;
     }
 
-    function validateFieldTypes(bytes[] memory types) public pure {
-        for (uint256 i = 0; i < types.length; i++) {
-            bytes32 fieldType = keccak256(types[i]);
-            require(
-                fieldType == keccak256(bytes("string")) ||
-                    fieldType == keccak256(bytes("bytes")) ||
-                    fieldType == keccak256(bytes("bytes1")) ||
-                    fieldType == keccak256(bytes("bytes2")) ||
-                    fieldType == keccak256(bytes("bytes4")) ||
-                    fieldType == keccak256(bytes("bytes8")) ||
-                    fieldType == keccak256(bytes("bytes20")) ||
-                    fieldType == keccak256(bytes("bytes32")) ||
-                    fieldType == keccak256(bytes("uint")) ||
-                    fieldType == keccak256(bytes("uint8")) ||
-                    fieldType == keccak256(bytes("uint16")) ||
-                    fieldType == keccak256(bytes("uint32")) ||
-                    fieldType == keccak256(bytes("uint64")) ||
-                    fieldType == keccak256(bytes("int")) ||
-                    fieldType == keccak256(bytes("int8")) ||
-                    fieldType == keccak256(bytes("int16")) ||
-                    fieldType == keccak256(bytes("int32")) ||
-                    fieldType == keccak256(bytes("int64")) ||
-                    fieldType == keccak256(bytes("bool")) ||
-                    fieldType == keccak256(bytes("address")),
-                "contain invalid field type"
-            );
-        }
-    }
-
-    modifier validateTagSchema(string memory fields) {
-        bytes[] memory fieldTypes = this.getFieldTypes(fields);
-        this.validateFieldTypes(fieldTypes);
-        _;
-    }
-
-    function validateTagData(bytes memory data, bytes[] memory fieldTypes)
-        public
-        pure
-    {
+    function validateTagData(
+        bytes memory data,
+        TagFieldType[] memory fieldTypes
+    ) public pure {
         ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(data);
         for (uint256 i = 0; i < fieldTypes.length; i++) {
-            bytes32 fieldType = keccak256(fieldTypes[i]);
+            TagFieldType fieldType = fieldTypes[i];
             if (
-                fieldType == keccak256(bytes("string")) ||
-                fieldType == keccak256(bytes("bytes"))
+                fieldType == TagFieldType.String ||
+                fieldType == TagFieldType.Bytes
             ) {
-                rBuf.forwardBytes();
+                rBuf.skipBytes();
             } else if (
-                fieldType == keccak256(bytes("bytes1")) ||
-                fieldType == keccak256(bytes("uint8")) ||
-                fieldType == keccak256(bytes("int8")) ||
-                fieldType == keccak256(bytes("bool"))
+                fieldType == TagFieldType.Bytes1 ||
+                fieldType == TagFieldType.Uint8 ||
+                fieldType == TagFieldType.Int8 ||
+                fieldType == TagFieldType.Bool
             ) {
-                rBuf.forward(1);
+                rBuf.skip(1);
             } else if (
-                fieldType == keccak256(bytes("bytes2")) ||
-                fieldType == keccak256(bytes("uint16")) ||
-                fieldType == keccak256(bytes("int16"))
+                fieldType == TagFieldType.Bytes2 ||
+                fieldType == TagFieldType.Uint16 ||
+                fieldType == TagFieldType.Int16
             ) {
-                rBuf.forward(2);
+                rBuf.skip(2);
             } else if (
-                fieldType == keccak256(bytes("bytes4")) ||
-                fieldType == keccak256(bytes("uint32")) ||
-                fieldType == keccak256(bytes("int32"))
+                fieldType == TagFieldType.Bytes4 ||
+                fieldType == TagFieldType.Uint32 ||
+                fieldType == TagFieldType.Int32
             ) {
-                rBuf.forward(4);
+                rBuf.skip(4);
             } else if (
-                fieldType == keccak256(bytes("bytes8")) ||
-                fieldType == keccak256(bytes("uint64")) ||
-                fieldType == keccak256(bytes("int64"))
+                fieldType == TagFieldType.Bytes8 ||
+                fieldType == TagFieldType.Uint64 ||
+                fieldType == TagFieldType.Int64
             ) {
-                rBuf.forward(8);
+                rBuf.skip(8);
             } else if (
-                fieldType == keccak256(bytes("bytes20")) ||
-                fieldType == keccak256(bytes("address"))
+                fieldType == TagFieldType.Bytes20 ||
+                fieldType == TagFieldType.Address
             ) {
-                rBuf.forward(20);
+                rBuf.skip(20);
             } else if (
-                fieldType == keccak256(bytes("bytes32")) ||
-                fieldType == keccak256(bytes("uint")) ||
-                fieldType == keccak256(bytes("int"))
+                fieldType == TagFieldType.Bytes32 ||
+                fieldType == TagFieldType.Uint ||
+                fieldType == TagFieldType.Int
             ) {
-                rBuf.forward(32);
+                rBuf.skip(32);
             }
         }
         require(rBuf.left() == 0, "invalid tag data");
     }
 
+    function checkTagSchemaUpdateAuth(TagSchema storage schema)
+    internal
+    view
+    returns (bool)
+    {
+        if (schema.Owner == msg.sender) {
+            return true;
+        }
+        //check delegator of owner permission
+        if (schema.Agent.Agent == bytes20(0)) {
+            //no delegator
+            return false;
+        }
+        if (schema.Agent.Type == AgentType.Address) {
+            return schema.Agent.Agent == bytes20(msg.sender);
+        }
+        return this.hasTag(schema.Agent.Agent, msg.sender);
+    }
+
+    function checkTagSchemaIssuerAuth(TagSchema storage schema)
+    internal
+    view
+    returns (bool)
+    {
+        if (schema.IsPublic) {
+            return true;
+        }
+        return checkTagSchemaUpdateAuth(schema);
+    }
+
+    function checkTagUpdateAuth(TagSchema storage schema, address tagIssuer)
+    internal
+    view
+    returns (bool)
+    {
+        if (schema.IsPublic) {
+            return tagIssuer == msg.sender;
+        }
+        return checkTagSchemaUpdateAuth(schema);
+    }
+
     function createTagSchema(
         string calldata tagName,
-        string calldata fields,
+        bytes calldata fields,
         string calldata desc,
         bool unique,
-        uint32 gasFee
+        bool isPublic,
+        uint32 expiredTime,
+        uint32 gasFee,
+        TagAgent calldata agent
     ) external validateTagSchema(fields) {
-        TagSchema memory schema = TagSchema(
-            this.genTagSchemaId(),
-            tagName,
-            msg.sender,
-            fields,
-            desc,
-            unique,
-            gasFee
-        );
+        bytes20 schemaId = this.genTagSchemaId();
+        TagSchema storage schema = tagSchemas[schemaId];
+        require(schema.Id == bytes32(0), "duplicate schemaId");
+
+        schema.Id = schemaId;
+        schema.TagName = tagName;
+        schema.Owner = msg.sender;
+        schema.Fields = fields;
+        schema.Desc = desc;
+        schema.Unique = unique;
+        schema.IsPublic = isPublic;
+        schema.GasFee = gasFee;
+        schema.ExpiredTime = expiredTime;
+        schema.CreateAt = uint64(block.number);
+        schema.Agent = agent;
+
         tagSchemas[schema.Id] = schema;
         emit CreateTagSchema(
             schema.Id,
@@ -221,9 +284,65 @@ contract dTag {
             schema.Owner,
             schema.Fields,
             schema.Desc,
+            schema.IsPublic,
             schema.Unique,
-            schema.GasFee
+            schema.ExpiredTime,
+            schema.GasFee,
+            schema.Agent
         );
+    }
+
+    function updateTagSchema(
+        bytes20 schemaId,
+        string calldata tagName,
+        string calldata desc,
+        uint32 gasFee,
+        bool isPublic,
+        TagAgent calldata agent
+    ) external {
+        TagSchema storage schema = tagSchemas[schemaId];
+        require(schema.Id != bytes32(0), "invalid schemaId");
+
+        if (agent.Agent != bytes20(0)) {
+            require(
+                schema.Owner == msg.sender,
+                "only owner can update tag schema agent"
+            );
+        } else {
+            require(
+                checkTagSchemaUpdateAuth(schema),
+                "invalid tagSchema update permission"
+            );
+        }
+
+        schema.TagName = tagName;
+        schema.Desc = desc;
+        schema.GasFee = gasFee;
+        schema.IsPublic = isPublic;
+        schema.Agent = agent;
+
+        emit UpdateTagSchema(
+            schemaId,
+            tagName,
+            desc,
+            gasFee,
+            isPublic,
+            agent
+        );
+    }
+
+    function deleteTagSchema(bytes20 schemaId) external {
+        TagSchema storage schema = tagSchemas[schemaId];
+        require(schema.Id != bytes32(0), "invalid schemaId");
+        require(
+            checkTagSchemaUpdateAuth(schema),
+            "invalid tagSchema update permission"
+        );
+        require(schema.Count == 0, "only empty tagSchema can be deleted");
+
+        delete tagSchemas[schemaId];
+
+        emit DeleteTagSchema(schemaId);
     }
 
     function getTagSchema(bytes20 tagSchemaId)
@@ -234,72 +353,121 @@ contract dTag {
         return tagSchemas[tagSchemaId];
     }
 
-    function createTagToUser(
+    function addTagToAddress(
         bytes20 tagSchemaId,
-        address receiver,
+        address addr,
         bytes calldata data
     ) external {
-        TagSchema memory tagSchema = tagSchemas[tagSchemaId];
+        TagSchema storage tagSchema = tagSchemas[tagSchemaId];
         require(tagSchema.Id != bytes20(0), "invalid tagSchemaId");
-
-        bytes20 tagId = this.genTagId(tagSchemaId, receiver, tagSchema.Unique);
-        Tag storage tag = tags[tagId];
         require(
-            tagSchema.Unique && tag.Id == bytes20(0),
-            "tag has already exist"
+            checkTagSchemaIssuerAuth(tagSchema),
+            "invalid tagSchema issuer permission"
         );
 
-        bytes[] memory fieldTypes = this.getFieldTypes(tagSchema.Fields);
+        bytes20 tagId = this.genTagId(tagSchemaId, addr, tagSchema.Unique);
+        Tag storage tag = tags[tagId];
+        require(tag.SchemaId == bytes20(0), "tag has already exist");
+
+        TagFieldType[] memory fieldTypes = this.getFieldTypes(tagSchema.Fields);
         this.validateTagData(data, fieldTypes);
 
-        tag.Owner = msg.sender;
+        tag.Id = tagId;
+        tag.Issuer = msg.sender;
         tag.Data = data;
         tag.SchemaId = tagSchemaId;
-        tag.Id = tagId;
-        tag.CreateAt = block.number;
+        tag.UpdateAt = uint64(block.number);
 
-        emit CreateTag(tag.SchemaId, tag.Id, tag.Owner, tag.Data, tag.CreateAt);
+        tagSchema.Count++;
+
+        emit AddTag(tag.SchemaId, tagId, addr, tag.Issuer, tag.Data);
     }
 
-    function getTag(bytes20 tagId) external view returns (Tag memory) {
-        Tag memory tag = tags[tagId];
-        return tag;
+    function updateTag(bytes20 tagId, bytes calldata data) external {
+        Tag storage tag = tags[tagId];
+        require(tag.SchemaId != bytes20(0), "invalid tagId");
+
+        TagSchema storage tagSchema = tagSchemas[tag.SchemaId];
+        require(tagSchema.Id != bytes20(0), "invalid tagSchemaId");
+        require(
+            checkTagUpdateAuth(tagSchema, tag.Issuer),
+            "invalid tag update permission"
+        );
+
+        TagFieldType[] memory fieldTypes = this.getFieldTypes(tagSchema.Fields);
+        this.validateTagData(data, fieldTypes);
+
+        tag.Data = data;
+        tag.UpdateAt = uint64(block.number);
+
+        emit UpdateTag(tagId, data);
     }
 
-    function getTag(address addr, bytes20 tagSchemaId)
-        external
-        view
-        returns (Tag memory)
-    {
-        Tag memory tag = tags[this.genUniqueTagId(tagSchemaId, addr)];
-        return tag;
+    function deleteTag(bytes20 tagId) external {
+        Tag storage tag = tags[tagId];
+        require(tag.SchemaId != bytes20(0), "invalid tagId");
+
+        TagSchema storage tagSchema = tagSchemas[tag.SchemaId];
+        require(tagSchema.Id != bytes20(0), "invalid tagSchemaId of tag");
+        require(
+            checkTagUpdateAuth(tagSchema, tag.Issuer),
+            "invalid tag delete permission"
+        );
+
+        tagSchema.Count--;
+        delete tags[tagId];
+
+        emit DeleteTag(tagId);
     }
 
-    function hasTag(address addr, bytes20 tagSchemaId)
-        external
-        view
-        returns (bool)
-    {
-        Tag memory tag = tags[this.genUniqueTagId(tagSchemaId, addr)];
-        return tag.Id != bytes20(0);
-    }
-
-    function createTagToContact(
-        address tagSchemaId,
-        address contractAddress,
-        bytes calldata data
-    ) external {}
-
-    function createTagToNFT(
-        address tagSchemaId,
+    function addTagToNFT(
+        bytes20 tagSchemaId,
         address contractAddress,
         string calldata assetId,
         bytes calldata data
-    ) external {}
+    ) external {
+        //        TagSchema memory tagSchema = tagSchemas[tagSchemaId];
+        //        require(tagSchema.Id != bytes20(0), "invalid tagSchemaId");
+    }
 
-    function createTagToTagSchema(
+    function addTagToTagSchema(
         address tagSchemaId,
         address destTagSchemaId,
         bytes calldata data
     ) external {}
+
+    function getTag(bytes20 tagId)
+        external
+        view
+        returns (Tag memory tag, bool valid)
+    {
+        tag = tags[tagId];
+        if (tag.Id == bytes20(0)) {
+            return (tag, valid);
+        }
+        TagSchema memory tagSchema = tagSchemas[tag.SchemaId];
+        valid =
+            tagSchema.ExpiredTime == 0 ||
+            (uint64(block.number) - tag.UpdateAt) <= tagSchema.ExpiredTime;
+        return (tag, valid);
+    }
+
+    function getTag(bytes20 tagSchemaId, address addr)
+        external
+        view
+        returns (Tag memory tag, bool valid)
+    {
+        bytes20 tagId = this.genTagId(tagSchemaId, addr, true);
+        return this.getTag(tagId);
+    }
+
+    function hasTag(bytes20 tagSchemaId, address addr)
+        external
+        view
+        returns (bool)
+    {
+        bool valid;
+        (, valid) = this.getTag(tagSchemaId,addr);
+        return valid;
+    }
 }

@@ -9,10 +9,10 @@ pragma solidity ^0.8.4;
  * current contents of the buffer. The bytes object should not be stored between
  * operations, as it may change due to resizing of the buffer.
  */
-import "./strings.sol";
+//import "./strings.sol";
 
 library ReadBuffer {
-    using strings for *;
+    //    using strings for *;
     /**
      * @dev Represents a mutable buffer. Buffers have a current value (buf) and
      *      a capacity. The capacity may be longer than the current value, in
@@ -29,20 +29,30 @@ library ReadBuffer {
         return buf;
     }
 
-    function forward(buffer memory buf, uint256 len) internal pure {
-        require(buf.off + len <= buf.buf.length, "forward out of bounds");
+    function reset(buffer memory buf, bytes memory b) internal pure {
+        buf.buf = b;
+        buf.off = 0;
+    }
+
+    function skip(buffer memory buf, uint256 len) internal pure {
+        require(buf.off + len <= buf.buf.length, "skip out of bounds");
         buf.off += len;
     }
 
-    function forwardBytes(buffer memory buf) internal pure {
-        uint256 len = readUint32(buf);
-        forward(buf, len);
+    function skipBytes(buffer memory buf) internal pure returns (uint256) {
+        uint256 len = readUint16(buf);
+        skip(buf, len);
+        return len;
+    }
+
+    function skipString(buffer memory buf) internal pure returns (uint256) {
+        return skipBytes(buf);
     }
 
     function readFixedBytes(buffer memory buf, uint256 len)
         internal
         pure
-        returns (strings.slice memory)
+        returns (bytes memory)
     {
         uint256 off = buf.off;
         require(
@@ -50,23 +60,30 @@ library ReadBuffer {
             "readFixedBytes out of bounds"
         );
 
+        bytes memory data = new bytes(len);
+        uint256 dest;
         uint256 src;
         assembly {
             // Memory address of the buffer data
             let bufPtr := mload(buf)
             src := add(add(bufPtr, 32), off)
+            dest := add(data, 32)
+        }
+
+        for (uint256 count = len; count > 0; count -= 32) {
+            assembly {
+                mstore(dest, mload(src))
+            }
+            dest += 32;
+            src += 32;
         }
 
         buf.off += len;
-        return strings.slice(len, src);
+        return data;
     }
 
-    function readBytes(buffer memory buf)
-        internal
-        pure
-        returns (strings.slice memory)
-    {
-        uint256 len = readUint32(buf);
+    function readBytes(buffer memory buf) internal pure returns (bytes memory) {
+        uint256 len = readUint16(buf);
         return readFixedBytes(buf, len);
     }
 
