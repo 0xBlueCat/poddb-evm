@@ -106,7 +106,7 @@ contract dTag is dTagSchema {
     function checkTagUpdateAuth(
         dTagCommon.TagSchema memory schema,
         address tagIssuer
-    ) internal view override returns (bool) {
+    ) internal view returns (bool) {
         if (dTagCommon.isPublic(schema.Flags)) {
             return tagIssuer == msg.sender;
         }

@@ -82,11 +82,6 @@ abstract contract dTagSchema {
         virtual
         returns (bool);
 
-    function checkTagUpdateAuth(
-        dTagCommon.TagSchema memory schema,
-        address tagIssuer
-    ) internal view virtual returns (bool);
-
     function createTagSchema(
         string calldata tagName,
         bytes calldata fields,
