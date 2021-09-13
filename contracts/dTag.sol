@@ -7,6 +7,8 @@ import "./dTagUtils.sol";
 import "./dTagSchema.sol";
 
 abstract contract Storage {
+    function has(bytes20 id) external view virtual returns (bool);
+
     function get(bytes20 id) external view virtual returns (bytes memory);
 
     function set(bytes20 id, bytes calldata data) external virtual;
@@ -36,6 +38,11 @@ contract dTag is dTagSchema {
 
     constructor(address _storageContact) {
         storageContact = _storageContact;
+    }
+
+    function has(bytes20 id)external view override returns (bool){
+        Storage db = Storage(storageContact);
+        return db.has(id);
     }
 
     function get(bytes20 id) external view override returns (bytes memory) {
@@ -78,16 +85,15 @@ contract dTag is dTagSchema {
         if (schema.Owner == msg.sender) {
             return true;
         }
-        //check delegator of owner permission
+        //check agent of owner permission
         if (schema.Agent.Agent == bytes20(0)) {
-            //no delegator
+            //no agent
             return false;
         }
         if (schema.Agent.Type == dTagCommon.AgentType.Address) {
             return schema.Agent.Agent == bytes20(msg.sender);
         }
-        dTagCommon.TagObject memory object;
-        object.Address = msg.sender;
+        dTagCommon.TagObject memory object  = dTagCommon.TagObject(msg.sender, uint256(0));
         return this.hasTag(schema.Agent.Agent, object);
     }
 
@@ -136,6 +142,8 @@ contract dTag is dTagSchema {
             object,
             dTagCommon.canMultiIssue(tagSchema.Flags)
         );
+
+        require (!this.has(tagId), "tagId has already exist");
 
         dTagCommon.Tag memory tag = dTagCommon.Tag(
             Version,

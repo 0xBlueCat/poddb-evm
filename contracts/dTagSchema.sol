@@ -46,6 +46,8 @@ abstract contract dTagSchema {
         _;
     }
 
+    function has(bytes20 id)external view virtual returns (bool);
+
     function get(bytes20 id) external view virtual returns (bytes memory);
 
     function set(bytes20 id, bytes memory data) internal virtual;
@@ -91,6 +93,8 @@ abstract contract dTagSchema {
         dTagCommon.TagAgent calldata agent
     ) external validateTagSchema(fields) {
         bytes20 schemaId = dTagUtils.genTagSchemaId();
+        require (!this.has(schemaId), "tagSchemaId has already exist");
+
         setTagSchema(schemaId, fields, flags, expiredTime, agent);
         setTagSchemaInfo(schemaId, tagName, desc, uint32(block.number));
 
