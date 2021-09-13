@@ -9,6 +9,7 @@ pragma solidity ^0.8.4;
  * current contents of the buffer. The bytes object should not be stored between
  * operations, as it may change due to resizing of the buffer.
  */
+
 library WriteBuffer {
     /**
      * @dev Represents a mutable buffer. Buffers have a current value (buf) and
@@ -150,7 +151,7 @@ library WriteBuffer {
     ) internal pure returns (buffer memory) {
         require(len <= 32, "uint len cannot larger than 32");
 
-        if (buf.buf.length + len >= buf.capacity) {
+        if (buf.buf.length + len > buf.capacity) {
             resize(buf, (buf.buf.length + len) * 2);
         }
 
@@ -165,6 +166,39 @@ library WriteBuffer {
             mstore(dest, data)
             //Incr length of buffer
             mstore(bufPtr, add(bufLen, len))
+        }
+        return buf;
+    }
+
+    function writeVarUintAt(
+        buffer memory buf,
+        uint256 offset,
+        uint256 data,
+        uint256 len
+    ) internal pure returns (buffer memory) {
+        require(offset <= buf.buf.length, "offset out of bound");
+        require(len <= 32, "uint len cannot larger than 32");
+        uint256 newLen = offset + len;
+        if (newLen > buf.capacity) {
+            resize(buf, newLen * 2);
+        }
+
+        uint256 tmp = len * 8;
+        // Left-align data
+        data = data << ((32 - len) * 8);
+        bytes32 mask = (~bytes32(0) << tmp) >> tmp;
+        assembly {
+            // Memory address of the buffer data
+            let bufPtr := mload(buf)
+            // Length of existing buffer data
+            let bufLen := mload(bufPtr)
+            let dest := add(add(bufPtr, 32), offset)
+            mstore(dest, or(data, and(mload(dest), mask)))
+
+            //Update buffer length if we extended it
+            if gt(newLen, bufLen) {
+                mstore(bufPtr, newLen)
+            }
         }
         return buf;
     }
@@ -257,7 +291,7 @@ library WriteBuffer {
     ) internal pure returns (buffer memory) {
         require(len <= 32, "bytes32 len cannot larger than 32");
 
-        if (buf.buf.length + len >= buf.capacity) {
+        if (buf.buf.length + len > buf.capacity) {
             resize(buf, (buf.buf.length + len) * 2);
         }
 
