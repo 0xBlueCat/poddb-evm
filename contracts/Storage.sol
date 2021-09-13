@@ -48,7 +48,7 @@ contract Storage {
         return accessors[accessor];
     }
 
-    function has(bytes20 id) external view returns (bool){
+    function has(bytes20 id) external view returns (bool) {
         return db[id].length > 0;
     }
 

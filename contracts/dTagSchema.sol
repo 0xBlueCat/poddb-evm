@@ -13,7 +13,7 @@ abstract contract dTagSchema {
 
     uint8 Version = 1;
 
-    event CreateTagSchema(
+    event NewTagSchema(
         uint8 version,
         bytes20 schemaId,
         string name,
@@ -46,7 +46,7 @@ abstract contract dTagSchema {
         _;
     }
 
-    function has(bytes20 id)external view virtual returns (bool);
+    function has(bytes20 id) external view virtual returns (bool);
 
     function get(bytes20 id) external view virtual returns (bytes memory);
 
@@ -84,7 +84,7 @@ abstract contract dTagSchema {
         virtual
         returns (bool);
 
-    function createTagSchema(
+    function newTagSchema(
         string calldata tagName,
         bytes calldata fields,
         string calldata desc,
@@ -93,13 +93,13 @@ abstract contract dTagSchema {
         dTagCommon.TagAgent calldata agent
     ) external validateTagSchema(fields) {
         bytes20 schemaId = dTagUtils.genTagSchemaId();
-        require (!this.has(schemaId), "tagSchemaId has already exist");
+        require(!this.has(schemaId), "tagSchemaId has already exist");
 
         setTagSchema(schemaId, fields, flags, expiredTime, agent);
         setTagSchemaInfo(schemaId, tagName, desc, uint32(block.number));
 
         //to avoid Stack too deep issue
-        emitCreateTagSchema(
+        emitNewTagSchema(
             schemaId,
             tagName,
             fields,
@@ -110,7 +110,7 @@ abstract contract dTagSchema {
         );
     }
 
-    function emitCreateTagSchema(
+    function emitNewTagSchema(
         bytes20 schemaId,
         string calldata tagName,
         bytes calldata fields,
@@ -119,7 +119,7 @@ abstract contract dTagSchema {
         uint32 expiredTime,
         dTagCommon.TagAgent calldata agent
     ) private {
-        emit CreateTagSchema(
+        emit NewTagSchema(
             Version,
             schemaId,
             tagName,

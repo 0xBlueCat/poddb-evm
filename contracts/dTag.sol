@@ -22,7 +22,7 @@ contract dTag is dTagSchema {
     using dTagCommon for *;
     using dTagUtils for *;
 
-    event AddTag(
+    event NewTag(
         uint8 version,
         dTagCommon.TagObject object,
         bytes20 schemaId,
@@ -40,7 +40,7 @@ contract dTag is dTagSchema {
         storageContact = _storageContact;
     }
 
-    function has(bytes20 id)external view override returns (bool){
+    function has(bytes20 id) external view override returns (bool) {
         Storage db = Storage(storageContact);
         return db.has(id);
     }
@@ -93,7 +93,10 @@ contract dTag is dTagSchema {
         if (schema.Agent.Type == dTagCommon.AgentType.Address) {
             return schema.Agent.Agent == bytes20(msg.sender);
         }
-        dTagCommon.TagObject memory object  = dTagCommon.TagObject(msg.sender, uint256(0));
+        dTagCommon.TagObject memory object = dTagCommon.TagObject(
+            msg.sender,
+            uint256(0)
+        );
         return this.hasTag(schema.Agent.Agent, object);
     }
 
@@ -119,7 +122,7 @@ contract dTag is dTagSchema {
         return checkTagSchemaUpdateAuth(schema);
     }
 
-    function addTag(
+    function newTag(
         bytes20 tagSchemaId,
         dTagCommon.TagObject calldata object,
         bytes calldata data
@@ -143,7 +146,7 @@ contract dTag is dTagSchema {
             dTagCommon.canMultiIssue(tagSchema.Flags)
         );
 
-        require (!this.has(tagId), "tagId has already exist");
+        require(!this.has(tagId), "tagId has already exist");
 
         dTagCommon.Tag memory tag = dTagCommon.Tag(
             Version,
@@ -155,10 +158,10 @@ contract dTag is dTagSchema {
 
         _setTag(tagId, tag);
 
-        emit AddTag(Version, object, tagSchemaId, tagId, tag.Issuer, data);
+        emit NewTag(Version, object, tagSchemaId, tagId, tag.Issuer, data);
     }
 
-    function addTagBatch(
+    function newTagBatch(
         bytes20 tagSchemaId,
         dTagCommon.TagObject[] calldata objects,
         bytes[] calldata datas
@@ -181,13 +184,14 @@ contract dTag is dTagSchema {
         bool canMultiIssue = dTagCommon.canMultiIssue(tagSchema.Flags);
         uint32 updateAt = uint32(block.number);
         address owner = msg.sender;
+        bytes20 tagId;
+
         for (uint256 i = 0; i < objects.length; i++) {
+            tagId = dTagUtils.genTagId(tagSchemaId, objects[i], canMultiIssue);
+            require(!this.has(tagId), "tagId has already exist");
+
             dTagUtils.validateTagData(datas[i], fieldTypes);
-            bytes20 tagId = dTagUtils.genTagId(
-                tagSchemaId,
-                objects[i],
-                canMultiIssue
-            );
+
             dTagCommon.Tag memory tag = dTagCommon.Tag(
                 Version,
                 tagSchemaId,
@@ -196,7 +200,8 @@ contract dTag is dTagSchema {
                 updateAt
             );
             _setTag(tagId, tag);
-            emit AddTag(
+
+            emit NewTag(
                 Version,
                 objects[i],
                 tagSchemaId,
@@ -307,9 +312,8 @@ contract dTag is dTagSchema {
     function hasTag(bytes20 tagSchemaId, dTagCommon.TagObject calldata object)
         external
         view
-        returns (bool)
+        returns (bool valid)
     {
-        bool valid;
         (, valid) = this.getTag(tagSchemaId, object);
         return valid;
     }
