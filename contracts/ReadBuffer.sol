@@ -70,12 +70,21 @@ library ReadBuffer {
             dest := add(data, 32)
         }
 
-        for (uint256 count = len; count > 0; count -= 32) {
+        // Copy word-length chunks while possible
+        for (; len >= 32; len -= 32) {
             assembly {
                 mstore(dest, mload(src))
             }
             dest += 32;
             src += 32;
+        }
+
+        // Copy remaining bytes
+        uint256 mask = 256**(32 - len) - 1;
+        assembly {
+            let srcpart := and(mload(src), not(mask))
+            let destpart := and(mload(dest), mask)
+            mstore(dest, or(destpart, srcpart))
         }
 
         buf.off += len;
@@ -85,6 +94,14 @@ library ReadBuffer {
     function readBytes(buffer memory buf) internal pure returns (bytes memory) {
         uint256 len = readUint16(buf);
         return readFixedBytes(buf, len);
+    }
+
+    function readString(buffer memory buf)
+        internal
+        pure
+        returns (string memory)
+    {
+        return string(readBytes(buf));
     }
 
     function readVarUint(buffer memory buf, uint256 len)
@@ -199,6 +216,11 @@ library ReadBuffer {
 
     function readBool(buffer memory buf) internal pure returns (bool) {
         return readUint8(buf) > 0 ? true : false;
+    }
+
+    function resetOffset(buffer memory buf, uint256 newOffset) internal pure {
+        require(buf.buf.length >= newOffset, "new offset out of bound");
+        buf.off = newOffset;
     }
 
     function left(buffer memory buf) internal pure returns (uint256) {

@@ -120,7 +120,7 @@ export class ReadBuffer {
     this.skip(this.readUint16().toNumber());
   }
 
-  skipString():void{
+  skipString(): void {
     this.skipBytes();
   }
 }

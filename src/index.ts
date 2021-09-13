@@ -1,46 +1,115 @@
 import { ethers } from "ethers";
 import dTag from "../artifacts/contracts/dTag.sol/dTag.json";
-import { TagFieldType, TagSchemaFieldBuilder } from "./dTag";
-import {WriteBuffer} from "./WriteBuffer";
+import storage from "../artifacts/contracts/Storage.sol/Storage.json";
+import {
+  AgentType, buildTagObject,
+  NoTagAgent,
+  TagAgentBuilder,
+  TagFieldType,
+  TagSchemaFieldBuilder,
+} from "./dTag";
+import { WriteBuffer } from "./WriteBuffer";
+import { ReadBuffer } from "./ReadBuffer";
 
-const dTagAddress = "0x36b58F5C1969B7b6591D752ea6F5486D069010AB";
+const storageAddress = "0xD42912755319665397FF090fBB63B1a31aE87Cee";
+const dTagAddress = "0x1343248Cbd4e291C6979e70a138f4c774e902561";
 
-async function testDTag(): Promise<void> {
-  const provider = new ethers.providers.JsonRpcProvider(
-    "http://127.0.0.1:8545"
-  );
-  const wallet = new ethers.Wallet(
-    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-    provider
-  );
-  const contact = new ethers.Contract(dTagAddress, dTag.abi, provider).connect(
-    wallet
-  );
-  const iface = new ethers.utils.Interface(dTag.abi);
-  const data = new WriteBuffer().writeString("Hello").writeUint8(24).getBytes();
-  // const dTagTx = await contact.getTagSchema("0x068d4ab4405464d098eaed16f6f125cf822c8943");
-  const dTagTx = await contact.addTagToAddress("0x85c4a441f09442a99a50d11dca774745909bb48f", "0xEc929115b0a4A687BAaa81CA760cbF15380F7D0C", data);
+const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
+const wallet = new ethers.Wallet(
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+  provider
+);
+const contact = new ethers.Contract(dTagAddress, dTag.abi, provider).connect(
+  wallet
+);
+const iface = new ethers.utils.Interface(dTag.abi);
+
+async function createTagSchema(): Promise<string> {
   const tagFields = new TagSchemaFieldBuilder()
     .put("name", TagFieldType.String)
     .put("age", TagFieldType.Uint8)
     .build();
+  const dTagTx = await contact.createTagSchema(
+    "PersonTag",
+    tagFields,
+    "Person Tag",
+    0,
+    0,
+    NoTagAgent
+  );
+  // console.log("dTagTx:", JSON.stringify(dTagTx, undefined, 2));
+  //
+  await dTagTx.wait();
+  // const tx = await provider.getTransaction(dTagTx.hash);
+  // console.log(JSON.stringify(tx, undefined, 2));
+
+  const rcp = await provider.getTransactionReceipt(dTagTx.hash);
+  // console.log("Receipt:", JSON.stringify(rcp, undefined, 2));
+  const parseLogs = await iface.parseLog(rcp.logs[0]);
+  console.log("ParsedLogs:", JSON.stringify(parseLogs.args, undefined, 2));
+
+  return parseLogs.args[1];
+}
+
+async function addTag(tagSchemaId: string) {
+  const data = new WriteBuffer().writeString("Hello").writeUint8(24).getBytes();
+  const dTagTx = await contact.addTag(
+    tagSchemaId,
+    buildTagObject("0xEc929115b0a4A687BAaa81CA760cbF15380F7D0C"),
+    data
+  );
+  // console.log("dTagTx:", JSON.stringify(dTagTx, undefined, 2));
+  await dTagTx.wait();
+  const rcp = await provider.getTransactionReceipt(dTagTx.hash);
+  // console.log("Receipt:", JSON.stringify(rcp, undefined, 2));
+  const parseLogs = await iface.parseLog(rcp.logs[0]);
+  console.log("ParsedLogs:", JSON.stringify(parseLogs.args, undefined, 2));
+}
+
+async function testStorage(): Promise<void> {
+  const contact = new ethers.Contract(
+    storageAddress,
+    storage.abi,
+    provider
+  ).connect(wallet);
+  const iface = new ethers.utils.Interface(storage.abi);
+  const tx = await contact.get("0x2adfa6093dc8f9a23cf52aba05b31347c4829b2c");
+  console.log("==", tx);
+}
+
+async function testDTag(): Promise<void> {
+  const iface = new ethers.utils.Interface(dTag.abi);
+  // const data = new WriteBuffer().wri
+  // teString("Hello").writeUint8(24).getBytes();
+  // const dTagTx = await contact.get("0x2ad251bdaae0430e5e5430a80710da19e5b2671c");
+  const dTagTx = await contact.getTagSchema1(
+    "0xcf596ef1687847b630d4eef1f06c37e6dc367ea5"
+  );
+  // const dTagTx = await contact.addTag("0xb42f1e30e04897972a96f52fa66364663ccb5d2e", new TagObjectBuilder("0xEc929115b0a4A687BAaa81CA760cbF15380F7D0C").build(), data);
+  // const tagFields = new TagSchemaFieldBuilder()
+  //   .put("name", TagFieldType.String)
+  //   .put("age", TagFieldType.Uint8)
+  //   .build();
   // const dTagTx = await contact.createTagSchema(
   //   "PersonTag",
   //   tagFields,
   //   "Person Tag",
+  //   false,
   //   true,
-  //   0
+  //   false,
+  //   0,
+  //   NoTagAgent
   // );
   console.log("dTagTx:", JSON.stringify(dTagTx, undefined, 2));
   //
-  await dTagTx.wait();
-  const tx = await provider.getTransaction(dTagTx.hash)
-  console.log(JSON.stringify(tx, undefined,2));
+  // await dTagTx.wait();
+  // const tx = await provider.getTransaction(dTagTx.hash);
+  // console.log(JSON.stringify(tx, undefined, 2));
 
-  const rcp = await provider.getTransactionReceipt(dTagTx.hash);
-  console.log("Receipt:", JSON.stringify(rcp, undefined, 2));
-  const parseLogs = await iface.parseLog(rcp.logs[0]);
-  console.log("ParsedLogs:", JSON.stringify(parseLogs,undefined,2));
+  // const rcp = await provider.getTransactionReceipt(dTagTx.hash);
+  // console.log("Receipt:", JSON.stringify(rcp, undefined, 2));
+  // const parseLogs = await iface.parseLog(rcp.logs[0]);
+  // console.log("ParsedLogs:", JSON.stringify(parseLogs, undefined, 2));
 
   // const tagSchemaId = '0x082992df439c2175e02442dc4ee2b01610060dfb';
   // const tagSchema = await contact.getTagSchema(tagSchemaId);
@@ -48,14 +117,18 @@ async function testDTag(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  await testDTag();
-//   const tagFields = new TagSchemaFieldBuilder()
-//       .put("name", TagFieldType.String)
-//       .put("age", TagFieldType.Uint8)
-//       .build();
-//   console.log(tagFields);
-//   const data = new WriteBuffer().writeString("Hello").writeUint8(24).getBytes();
-// console.log(data)
+  const tagSchemaId = await createTagSchema();
+  await addTag(tagSchemaId);
+  // await testDTag();
+
+  // await testStorage();
+  //   const tagFields = new TagSchemaFieldBuilder()
+  //       .put("name", TagFieldType.String)
+  //       .put("age", TagFieldType.Uint8)
+  //       .build();
+  //   console.log(tagFields);
+  //   const data = new WriteBuffer().writeString("Hello").writeUint8(24).getBytes();
+  // console.log(data)
 }
 
 void main();

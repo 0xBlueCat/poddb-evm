@@ -1,4 +1,5 @@
 import { WriteBuffer } from "./WriteBuffer";
+import { ethers } from "ethers";
 
 export enum TagFieldType {
   Bool,
@@ -24,18 +25,38 @@ export enum TagFieldType {
   String,
 }
 
-export class TagSchemaField {
-  public constructor(
-    private fieldName: string,
-    private fieldType: TagFieldType
-  ) {}
+export enum AgentType {
+  Address,
+  Tag,
+}
 
-  public getFieldName(): string {
-    return this.fieldName;
+export class TagAgentBuilder {
+  public Type: AgentType;
+  public Agent: string; //EOA address, contract address or tagSchemaId
+
+  constructor(agentType: AgentType, agent: string) {
+    this.Type = agentType;
+    this.Agent = new WriteBuffer(20).writeBytes20(agent).getBytes();
   }
-  public getFieldType(): TagFieldType {
-    return this.fieldType;
+
+  public build(): [AgentType, string] {
+    return [this.Type, this.Agent];
   }
+}
+
+export const NoTagAgent = new TagAgentBuilder(AgentType.Address, "0x").build();
+
+export function buildTagObject(address: string, tokenId: string = "0"):[string, string]{
+  const addressStr = new WriteBuffer(20).writeAddress(address).getBytes();
+  const tokenIdsStr = new WriteBuffer(20)
+      .writeUint(ethers.BigNumber.from(tokenId))
+      .getBytes();
+  return [addressStr,  tokenIdsStr];
+}
+
+export interface TagSchemaField {
+  fieldName: string;
+  fieldType: TagFieldType;
 }
 
 export class TagSchemaFieldBuilder {
@@ -48,7 +69,7 @@ export class TagSchemaFieldBuilder {
     fieldName: string,
     fieldType: TagFieldType
   ): TagSchemaFieldBuilder {
-    this.fields.push(new TagSchemaField(fieldName, fieldType));
+    this.fields.push({ fieldName, fieldType });
     return this;
   }
 
@@ -56,8 +77,8 @@ export class TagSchemaFieldBuilder {
     const buf: WriteBuffer = new WriteBuffer();
     buf.writeUint8(this.fields.length);
     this.fields.forEach((field) => {
-      buf.writeString(field.getFieldName());
-      buf.writeUint8(field.getFieldType());
+      buf.writeString(field.fieldName);
+      buf.writeUint8(field.fieldType);
     });
     return buf.getBytes();
   }
