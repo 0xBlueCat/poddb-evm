@@ -12,7 +12,7 @@ import { WriteBuffer } from "./WriteBuffer";
 import { ReadBuffer } from "./ReadBuffer";
 
 const storageAddress = "0xD42912755319665397FF090fBB63B1a31aE87Cee";
-const dTagAddress = "0x1343248Cbd4e291C6979e70a138f4c774e902561";
+const dTagAddress = "0x0Dd99d9f56A14E9D53b2DdC62D9f0bAbe806647A";
 
 const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
 const wallet = new ethers.Wallet(

@@ -114,7 +114,7 @@ library dTagCommon {
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 51 + schema.Fields.length;
+        uint256 count = 49 + schema.Fields.length;
 
         wBuf
             .init(count)
@@ -182,7 +182,7 @@ library dTagCommon {
 
     function serializeTag(Tag memory tag) external pure returns (bytes memory) {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 68 + tag.Data.length;
+        uint256 count = 47 + tag.Data.length;
         wBuf.init(count);
         wBuf
             .writeUint8(tag.Version)
