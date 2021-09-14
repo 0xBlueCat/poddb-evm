@@ -66,8 +66,18 @@ library Utils {
         return types;
     }
 
+    function validateTagClassFields(bytes calldata fields) public pure{
+        ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(fields);
+        uint256 len = rBuf.readUint8();
+        for (uint256 i = 0; i < len; i++) {
+            require(rBuf.skipString() > 0, "field name cannot empty");
+            Common.TagFieldType(rBuf.readUint8()); // test whether can convert to TagFieldType
+        }
+        require(rBuf.left() == 0, "invalid fieldTypes");
+    }
+
     function validateTagData(
-        bytes memory data,
+        bytes calldata data,
         Common.TagFieldType[] memory fieldTypes
     ) public pure {
         ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(data);

@@ -33,17 +33,6 @@ abstract contract DTagClass {
         Common.TagAgent agent
     );
 
-    modifier validateTagClass(bytes memory fieldTypes) {
-        ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(fieldTypes);
-        uint256 len = rBuf.readUint8();
-        for (uint256 i = 0; i < len; i++) {
-            require(rBuf.skipString() > 0, "field name cannot empty");
-            Common.TagFieldType(rBuf.readUint8()); // can convert to TagFieldType
-        }
-        require(rBuf.left() == 0, "invalid fieldTypes");
-        _;
-    }
-
     function has(bytes20 id) external view virtual returns (bool);
 
     function get(bytes20 id) external view virtual returns (bytes memory);
@@ -89,7 +78,9 @@ abstract contract DTagClass {
         uint8 flags,
         uint32 expiredTime,
         Common.TagAgent calldata agent
-    ) external validateTagClass(fields) {
+    ) external {
+        Utils.validateTagClassFields(fields);
+
         bytes20 classId = Utils.genTagClassId();
         require(!this.has(classId), "tagClassId has already exist");
 
