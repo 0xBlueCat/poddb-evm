@@ -35,12 +35,13 @@ library ReadBuffer {
     }
 
     function skip(buffer memory buf, uint256 len) internal pure {
-        require(buf.off + len <= buf.buf.length, "skip out of bounds");
-        buf.off += len;
+        uint256 l = buf.off + len;
+        require(l <= buf.buf.length, "skip out of bounds");
+        buf.off = l;
     }
 
     function skipBytes(buffer memory buf) internal pure returns (uint256) {
-        uint256 len = readUint16(buf);
+        uint256 len = readVarUint(buf, 2);
         skip(buf, len);
         return len;
     }
@@ -55,10 +56,8 @@ library ReadBuffer {
         returns (bytes memory)
     {
         uint256 off = buf.off;
-        require(
-            buf.off + len <= buf.buf.length,
-            "readFixedBytes out of bounds"
-        );
+        uint256 l = buf.off + len;
+        require(l <= buf.buf.length, "readFixedBytes out of bounds");
 
         bytes memory data = new bytes(len);
         uint256 dest;
@@ -87,7 +86,7 @@ library ReadBuffer {
             mstore(dest, or(destpart, srcpart))
         }
 
-        buf.off += len;
+        buf.off = l;
         return data;
     }
 
@@ -110,8 +109,9 @@ library ReadBuffer {
         returns (uint256 data)
     {
         uint256 off = buf.off;
+        uint256 l = buf.off + len;
         require(len <= 32, "readVarUint len cannot larger than 32");
-        require(buf.off + len <= buf.buf.length, "readVarUint out of bounds");
+        require(l <= buf.buf.length, "readVarUint out of bounds");
         assembly {
             // Memory address of the buffer data
             let bufPtr := mload(buf)
@@ -119,7 +119,7 @@ library ReadBuffer {
             data := mload(src)
         }
         data = data >> ((32 - len) * 8);
-        buf.off += len;
+        buf.off = l;
         return data;
     }
 
@@ -144,19 +144,19 @@ library ReadBuffer {
     }
 
     function readInt8(buffer memory buf) internal pure returns (int8) {
-        return int8(readUint8(buf));
+        return int8(uint8(readVarUint(buf, 1)));
     }
 
     function readInt16(buffer memory buf) internal pure returns (int16) {
-        return int16(readUint16(buf));
+        return int16(uint16(readVarUint(buf, 2)));
     }
 
     function readInt32(buffer memory buf) internal pure returns (int32) {
-        return int32(readUint32(buf));
+        return int32(uint32(readVarUint(buf, 4)));
     }
 
     function readInt64(buffer memory buf) internal pure returns (int64) {
-        return int64(readUint64(buf));
+        return int64(uint64(readVarUint(buf, 8)));
     }
 
     function readInt(buffer memory buf) internal pure returns (int256) {
@@ -169,18 +169,16 @@ library ReadBuffer {
         returns (bytes32 data)
     {
         uint256 off = buf.off;
+        uint256 l = buf.off + len;
         require(len <= 32, "readVarBytes32 len cannot larger than 32");
-        require(
-            buf.off + len <= buf.buf.length,
-            "readVarBytes32 out of bounds"
-        );
+        require(l <= buf.buf.length, "readVarBytes32 out of bounds");
         assembly {
             // Memory address of the buffer data
             let bufPtr := mload(buf)
             let src := add(add(bufPtr, 32), off)
             data := mload(src)
         }
-        buf.off += len;
+        buf.off = l;
         bytes32 mask = bytes32(~uint256(0)) << ((32 - len) * 8);
         data = data & mask;
         return data;
@@ -215,7 +213,7 @@ library ReadBuffer {
     }
 
     function readBool(buffer memory buf) internal pure returns (bool) {
-        return readUint8(buf) > 0 ? true : false;
+        return readVarUint(buf, 1) > 0 ? true : false;
     }
 
     function resetOffset(buffer memory buf, uint256 newOffset) internal pure {

@@ -114,36 +114,6 @@ library WriteBuffer {
         return buf;
     }
 
-    /**
-     * @dev Writes a byte to the buffer. Resizes if doing so would exceed the
-     *      capacity of the buffer.
-     * @param buf The buffer to append to
-     * @param data The data to append.
-     * @return The original buffer, for chaining.
-     */
-    function writeUint8(buffer memory buf, uint8 data)
-        internal
-        pure
-        returns (buffer memory)
-    {
-        if (buf.buf.length >= buf.capacity) {
-            resize(buf, buf.capacity * 2);
-        }
-
-        assembly {
-            // Memory address of the buffer data
-            let bufPtr := mload(buf)
-            // Length of existing buffer data
-            let bufLen := mload(bufPtr)
-            let dest := add(add(bufPtr, 32), bufLen)
-            //Start address
-            mstore8(dest, data)
-            //Incr length of buffer
-            mstore(bufPtr, add(bufLen, 1))
-        }
-        return buf;
-    }
-
     function writeVarUint(
         buffer memory buf,
         uint256 data,
@@ -203,6 +173,21 @@ library WriteBuffer {
         return buf;
     }
 
+    /**
+     * @dev Writes a byte to the buffer. Resizes if doing so would exceed the
+     *      capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The data to append.
+     * @return The original buffer, for chaining.
+     */
+    function writeUint8(buffer memory buf, uint8 data)
+        internal
+        pure
+        returns (buffer memory)
+    {
+        return writeVarUint(buf, data, 1);
+    }
+
     function writeUint16(buffer memory buf, uint16 data)
         internal
         pure
@@ -240,7 +225,7 @@ library WriteBuffer {
         pure
         returns (buffer memory)
     {
-        return writeUint8(buf, uint8(data));
+        return writeVarUint(buf, uint8(data), 1);
     }
 
     function writeInt16(buffer memory buf, int16 data)
@@ -361,7 +346,7 @@ library WriteBuffer {
         pure
         returns (buffer memory)
     {
-        return writeUint8(buf, data ? 1 : 0);
+        return writeVarUint(buf, data ? 1 : 0, 1);
     }
 
     function writeAddress(buffer memory buf, address data)
