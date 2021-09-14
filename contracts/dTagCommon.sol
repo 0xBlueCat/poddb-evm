@@ -114,7 +114,7 @@ library dTagCommon {
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 49 + schema.Fields.length;
+        uint256 count = 50 + schema.Fields.length;
 
         wBuf
             .init(count)
@@ -122,9 +122,10 @@ library dTagCommon {
             .writeAddress(schema.Owner)
             .writeBytes(schema.Fields)
             .writeUint8(schema.Flags)
-            .writeUint32(schema.ExpiredTime)
-            .writeFixedBytes(serializeAgent(schema.Agent));
-
+            .writeUint32(schema.ExpiredTime);
+        schema.Agent.Agent != bytes20(0)
+            ? wBuf.writeBool(true).writeFixedBytes(serializeAgent(schema.Agent))
+            : wBuf.writeBool(false);
         return wBuf.getBytes();
     }
 
@@ -142,7 +143,9 @@ library dTagCommon {
         schema.Fields = buf.readBytes();
         schema.Flags = buf.readUint8();
         schema.ExpiredTime = buf.readUint32();
-        schema.Agent = deserializeAgent(buf.readFixedBytes(21));
+        if (buf.readBool()) {
+            schema.Agent = deserializeAgent(buf.readFixedBytes(21));
+        }
         return schema;
     }
 
