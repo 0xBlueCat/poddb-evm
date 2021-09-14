@@ -46,12 +46,15 @@ export class TagAgentBuilder {
 
 export const NoTagAgent = new TagAgentBuilder(AgentType.Address, "0x").build();
 
-export function buildTagObject(address: string, tokenId: string = "0"):[string, string]{
+export function buildTagObject(
+  address: string,
+  tokenId: string = "0"
+): [string, string] {
   const addressStr = new WriteBuffer(20).writeAddress(address).getBytes();
   const tokenIdsStr = new WriteBuffer(20)
-      .writeUint(ethers.BigNumber.from(tokenId))
-      .getBytes();
-  return [addressStr,  tokenIdsStr];
+    .writeUint(ethers.BigNumber.from(tokenId))
+    .getBytes();
+  return [addressStr, tokenIdsStr];
 }
 
 export interface TagClassField {
@@ -65,10 +68,7 @@ export class TagClassFieldBuilder {
     this.fields = [] as TagClassField[];
   }
 
-  public put(
-    fieldName: string,
-    fieldType: TagFieldType
-  ): TagClassFieldBuilder {
+  public put(fieldName: string, fieldType: TagFieldType): TagClassFieldBuilder {
     this.fields.push({ fieldName, fieldType });
     return this;
   }

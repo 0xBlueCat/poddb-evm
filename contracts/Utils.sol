@@ -66,7 +66,7 @@ library Utils {
         return types;
     }
 
-    function validateTagClassFields(bytes calldata fields) public pure{
+    function validateTagClassFields(bytes calldata fields) public pure {
         ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(fields);
         uint256 len = rBuf.readUint8();
         for (uint256 i = 0; i < len; i++) {

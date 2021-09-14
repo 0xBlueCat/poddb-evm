@@ -31,7 +31,7 @@ async function main() {
     await utils.deployed();
     console.log("utils deployed to:", utils.address);
 
-    const podDBContract = await hre.ethers.getContractFactory("PodDB", {
+    const podDBContract = await hre.ethers.getContractFactory("DTag", {
         libraries:{
             Utils:utils.address,
             Common:common.address

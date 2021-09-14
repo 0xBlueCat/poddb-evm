@@ -1,8 +1,9 @@
 import { ethers } from "ethers";
-import dTag from "../artifacts/contracts/PodDB.sol/PodDB.json";
+import dTag from "../artifacts/contracts/DTag.sol/DTag.json";
 import storage from "../artifacts/contracts/Storage.sol/Storage.json";
 import {
-  AgentType, buildTagObject,
+  AgentType,
+  buildTagObject,
   NoTagAgent,
   TagAgentBuilder,
   TagFieldType,
@@ -12,7 +13,7 @@ import { WriteBuffer } from "./WriteBuffer";
 import { ReadBuffer } from "./ReadBuffer";
 
 const storageAddress = "0xD42912755319665397FF090fBB63B1a31aE87Cee";
-const podDBAddress = "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59";
+const podDBAddress = "0xB9d9e972100a1dD01cd441774b45b5821e136043";
 
 const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
 const wallet = new ethers.Wallet(
@@ -81,7 +82,11 @@ async function testDTag(): Promise<void> {
   const iface = new ethers.utils.Interface(dTag.abi);
   const data = new WriteBuffer().writeString("Hello").writeUint8(24).getBytes();
   // const dTagTx = await contact.get("0x2ad251bdaae0430e5e5430a80710da19e5b2671c");
-  const dTagTx = await contact.newTag("0xb42f1e30e04897972a96f52fa66364663ccb5d2e", buildTagObject("0xEc929115b0a4A687BAaa81CA760cbF15380F7D0C"), data);
+  const dTagTx = await contact.newTag(
+    "0xb42f1e30e04897972a96f52fa66364663ccb5d2e",
+    buildTagObject("0xEc929115b0a4A687BAaa81CA760cbF15380F7D0C"),
+    data
+  );
   // const tagFields = new TagSchemaFieldBuilder()
   //   .put("name", TagFieldType.String)
   //   .put("age", TagFieldType.Uint8)
