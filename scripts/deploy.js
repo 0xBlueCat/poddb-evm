@@ -21,26 +21,26 @@ async function main() {
     await storage.deployed();
     console.log("storageContact deployed to:", storage.address);
 
-    const dTagCommonContact  = await hre.ethers.getContractFactory("dTagCommon");
-    const dTagCommon = await dTagCommonContact.deploy();
-    await dTagCommon.deployed();
-    console.log("dTagCommonContact deployed to:", dTagCommon.address);
+    const commonContact  = await hre.ethers.getContractFactory("Common");
+    const common = await commonContact.deploy();
+    await common.deployed();
+    console.log("commonContact deployed to:", common.address);
 
-    const dTagUtilsContract = await hre.ethers.getContractFactory("dTagUtils");
-    const dTagUtils = await dTagUtilsContract.deploy();
-    await dTagUtils.deployed();
-    console.log("dTagUtils deployed to:", dTagUtils.address);
+    const utilsContract = await hre.ethers.getContractFactory("Utils");
+    const utils = await utilsContract.deploy();
+    await utils.deployed();
+    console.log("utils deployed to:", utils.address);
 
-    const dTagContract = await hre.ethers.getContractFactory("dTag", {
+    const podDBContract = await hre.ethers.getContractFactory("PodDB", {
         libraries:{
-            dTagUtils:dTagUtils.address,
-            dTagCommon:dTagCommon.address
+            Utils:utils.address,
+            Common:common.address
         }
     });
-  const dTag = await dTagContract.deploy(storage.address);
-  await dTag.deployed();
-  console.log("dTag deployed to:", dTag.address);
-  await setStorageAccessor(storage.address, dTag.address);
+  const podDB = await podDBContract.deploy(storage.address);
+  await podDB.deployed();
+  console.log("podDB deployed to:", podDB.address);
+  await setStorageAccessor(storage.address, podDB.address);
 }
 
 async function setStorageAccessor(storageAddress, dTagAddress){

@@ -54,21 +54,21 @@ export function buildTagObject(address: string, tokenId: string = "0"):[string, 
   return [addressStr,  tokenIdsStr];
 }
 
-export interface TagSchemaField {
+export interface TagClassField {
   fieldName: string;
   fieldType: TagFieldType;
 }
 
-export class TagSchemaFieldBuilder {
-  private fields: TagSchemaField[];
+export class TagClassFieldBuilder {
+  private fields: TagClassField[];
   public constructor() {
-    this.fields = [] as TagSchemaField[];
+    this.fields = [] as TagClassField[];
   }
 
   public put(
     fieldName: string,
     fieldType: TagFieldType
-  ): TagSchemaFieldBuilder {
+  ): TagClassFieldBuilder {
     this.fields.push({ fieldName, fieldType });
     return this;
   }
@@ -83,5 +83,3 @@ export class TagSchemaFieldBuilder {
     return buf.getBytes();
   }
 }
-
-export type TagDataBuilder = WriteBuffer;

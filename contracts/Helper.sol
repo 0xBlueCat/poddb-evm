@@ -3,12 +3,12 @@ pragma solidity ^0.8.4;
 
 import "./WriteBuffer.sol";
 import "./ReadBuffer.sol";
-import "./dTagCommon.sol";
+import "./Common.sol";
 
-library dTagHelper {
+library Helper {
     using WriteBuffer for *;
     using ReadBuffer for *;
-    using dTagCommon for *;
+    using Common for *;
 
     function buildFlags(
         bool multiIssue,
@@ -28,31 +28,31 @@ library dTagHelper {
         return flags;
     }
 
-    struct TagSchemaFieldBuilder {
+    struct TagClassFieldBuilder {
         WriteBuffer.buffer _buf;
         uint256 _count;
     }
 
     function init(
-        TagSchemaFieldBuilder memory builder,
+        TagClassFieldBuilder memory builder,
         WriteBuffer.buffer memory buf
-    ) internal pure returns (TagSchemaFieldBuilder memory) {
+    ) internal pure returns (TagClassFieldBuilder memory) {
         builder._buf = buf.writeUint8(0);
         builder._count = 0;
         return builder;
     }
 
     function put(
-        TagSchemaFieldBuilder memory builder,
+        TagClassFieldBuilder memory builder,
         string memory fieldName,
-        dTagCommon.TagFieldType fieldType
-    ) internal pure returns (TagSchemaFieldBuilder memory) {
+        Common.TagFieldType fieldType
+    ) internal pure returns (TagClassFieldBuilder memory) {
         builder._buf.writeString(fieldName).writeUint8(uint8(fieldType));
         builder._count++;
         return builder;
     }
 
-    function build(TagSchemaFieldBuilder memory builder)
+    function build(TagClassFieldBuilder memory builder)
         internal
         pure
         returns (bytes memory)

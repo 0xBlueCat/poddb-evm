@@ -13,7 +13,7 @@ pragma solidity ^0.8.4;
 import "./WriteBuffer.sol";
 import "./ReadBuffer.sol";
 
-library dTagCommon {
+library Common {
     using WriteBuffer for *;
     using ReadBuffer for *;
 
@@ -41,19 +41,19 @@ library dTagCommon {
         String
     }
 
-    struct TagSchema {
+    struct TagClass {
         uint8 Version;
         address Owner; // user address or contract address
         bytes Fields; // format Number fieldName_1 fieldType fieldName_2 fieldType fieldName_n fieldType
-        // 1:multiIssue flag, means one object have more one tag of this schema
+        // 1:multiIssue flag, means one object have more one tag of this class
         // 2:inherit flag, means when a contract have a tag, all of nft mint by this contact will inherit this tag automatic
-        // 4:public flag, means not only the owner of tag schema can issuer the tag, other also can issue the tag
+        // 4:public flag, means not only the owner of tag class can issuer the tag, other also can issue the tag
         uint8 Flags;
         uint32 ExpiredTime; //expired time(block number) of tag, until tag update, 0 mean tag won't expiration.
         TagAgent Agent;
     }
 
-    struct TagSchemaInfo {
+    struct TagClassInfo {
         uint8 Version;
         string TagName;
         string Desc;
@@ -62,7 +62,7 @@ library dTagCommon {
 
     struct Tag {
         uint8 Version;
-        bytes20 SchemaId;
+        bytes20 ClassId;
         address Issuer;
         bytes Data;
         uint32 UpdateAt;
@@ -73,14 +73,14 @@ library dTagCommon {
         Tag //address which had this tag
     }
 
-    //TagSchemaAgent can delegate tagSchema owner permission to another contract or address which had an special tag
+    //TagClassAgent can delegate tagClass owner permission to another contract or address which had an special tag
     struct TagAgent {
-        AgentType Type; //indicate the of delegator
-        bytes20 Agent; //agent have the same permission with the tagSchema owner
+        AgentType Type; //indicate the of the of agent
+        bytes20 Agent; //agent have the same permission with the tagClass owner
     }
 
     struct TagObject {
-        address Address; //EOA address, contract address, even tagSchemaId
+        address Address; //EOA address, contract address, even tagClassId
         uint256 TokenId; //NFT tokenId
     }
 
@@ -108,79 +108,81 @@ library dTagCommon {
         return agent;
     }
 
-    function serializeTagSchema(TagSchema memory schema)
+    function serializeTagClass(TagClass memory tagClass)
         external
         pure
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 50 + schema.Fields.length;
+        uint256 count = 50 + tagClass.Fields.length;
 
         wBuf
             .init(count)
-            .writeUint8(schema.Version)
-            .writeAddress(schema.Owner)
-            .writeBytes(schema.Fields)
-            .writeUint8(schema.Flags)
-            .writeUint32(schema.ExpiredTime);
-        schema.Agent.Agent != bytes20(0)
-            ? wBuf.writeBool(true).writeFixedBytes(serializeAgent(schema.Agent))
+            .writeUint8(tagClass.Version)
+            .writeAddress(tagClass.Owner)
+            .writeBytes(tagClass.Fields)
+            .writeUint8(tagClass.Flags)
+            .writeUint32(tagClass.ExpiredTime);
+        tagClass.Agent.Agent != bytes20(0)
+            ? wBuf.writeBool(true).writeFixedBytes(
+                serializeAgent(tagClass.Agent)
+            )
             : wBuf.writeBool(false);
         return wBuf.getBytes();
     }
 
-    function deserializeTagSchema(bytes memory data)
+    function deserializeTagClass(bytes memory data)
         external
         pure
-        returns (TagSchema memory schema)
+        returns (TagClass memory tagClass)
     {
         if (data.length == 0) {
-            return schema;
+            return tagClass;
         }
         ReadBuffer.buffer memory buf = ReadBuffer.fromBytes(data);
-        schema.Version = buf.readUint8();
-        schema.Owner = buf.readAddress();
-        schema.Fields = buf.readBytes();
-        schema.Flags = buf.readUint8();
-        schema.ExpiredTime = buf.readUint32();
+        tagClass.Version = buf.readUint8();
+        tagClass.Owner = buf.readAddress();
+        tagClass.Fields = buf.readBytes();
+        tagClass.Flags = buf.readUint8();
+        tagClass.ExpiredTime = buf.readUint32();
         if (buf.readBool()) {
-            schema.Agent = deserializeAgent(buf.readFixedBytes(21));
+            tagClass.Agent = deserializeAgent(buf.readFixedBytes(21));
         }
-        return schema;
+        return tagClass;
     }
 
-    function serializeTagSchemaInfo(TagSchemaInfo memory schemaInfo)
+    function serializeTagClassInfo(TagClassInfo memory classInfo)
         external
         pure
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
         uint256 count = 9 +
-            bytes(schemaInfo.TagName).length +
-            bytes(schemaInfo.Desc).length;
+            bytes(classInfo.TagName).length +
+            bytes(classInfo.Desc).length;
         wBuf
             .init(count)
-            .writeUint8(schemaInfo.Version)
-            .writeString(schemaInfo.TagName)
-            .writeString(schemaInfo.Desc)
-            .writeUint32(schemaInfo.CreateAt);
+            .writeUint8(classInfo.Version)
+            .writeString(classInfo.TagName)
+            .writeString(classInfo.Desc)
+            .writeUint32(classInfo.CreateAt);
         return wBuf.getBytes();
     }
 
-    function deserializeTagSchemaInfo(bytes memory data)
+    function deserializeTagClassInfo(bytes memory data)
         external
         pure
-        returns (TagSchemaInfo memory schemaInfo)
+        returns (TagClassInfo memory classInfo)
     {
         if (data.length == 0) {
-            return schemaInfo;
+            return classInfo;
         }
         ReadBuffer.buffer memory buf = ReadBuffer.fromBytes(data);
-        schemaInfo.Version = buf.readUint8();
-        schemaInfo.TagName = buf.readString();
-        schemaInfo.Desc = buf.readString();
-        schemaInfo.CreateAt = buf.readUint32();
-        return schemaInfo;
+        classInfo.Version = buf.readUint8();
+        classInfo.TagName = buf.readString();
+        classInfo.Desc = buf.readString();
+        classInfo.CreateAt = buf.readUint32();
+        return classInfo;
     }
 
     function serializeTag(Tag memory tag) external pure returns (bytes memory) {
@@ -189,7 +191,7 @@ library dTagCommon {
         wBuf.init(count);
         wBuf
             .writeUint8(tag.Version)
-            .writeBytes20(tag.SchemaId)
+            .writeBytes20(tag.ClassId)
             .writeAddress(tag.Issuer)
             .writeBytes(tag.Data)
             .writeUint32(tag.UpdateAt);
@@ -206,7 +208,7 @@ library dTagCommon {
         }
         ReadBuffer.buffer memory buf = ReadBuffer.fromBytes(data);
         tag.Version = buf.readUint8();
-        tag.SchemaId = buf.readBytes20();
+        tag.ClassId = buf.readBytes20();
         tag.Issuer = buf.readAddress();
         tag.Data = buf.readBytes();
         tag.UpdateAt = buf.readUint32();
