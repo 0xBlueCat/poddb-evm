@@ -11,7 +11,7 @@ abstract contract DTagClass {
     using Common for *;
     using Utils for *;
 
-    uint8 Version = 1;
+    uint256 constant Version = 1;
 
     event NewTagClass(
         uint8 version,
@@ -49,7 +49,7 @@ abstract contract DTagClass {
         Common.TagAgent calldata agent
     ) internal {
         Common.TagClass memory tagClass = Common.TagClass(
-            Version,
+            uint8(Version),
             msg.sender,
             fields,
             flags,
@@ -109,7 +109,7 @@ abstract contract DTagClass {
         Common.TagAgent calldata agent
     ) private {
         emit NewTagClass(
-            Version,
+            uint8(Version),
             classId,
             tagName,
             msg.sender,
@@ -129,7 +129,7 @@ abstract contract DTagClass {
     ) internal {
         bytes20 id = Utils.genTagClassInfoId(classId);
         Common.TagClassInfo memory classInfo = Common.TagClassInfo(
-            Version,
+            uint8(Version),
             tagName,
             desc,
             createAt

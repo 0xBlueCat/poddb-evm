@@ -97,7 +97,7 @@ abstract contract DTag is DTagClass {
         require(!this.has(tagId), "tagId has already exist");
 
         Common.Tag memory tag = Common.Tag(
-            Version,
+            uint8(Version),
             tagClassId,
             msg.sender,
             data,
@@ -106,7 +106,14 @@ abstract contract DTag is DTagClass {
 
         _setTag(tagId, tag);
 
-        emit NewTag(Version, object, tagClassId, tagId, tag.Issuer, data);
+        emit NewTag(
+            uint8(Version),
+            object,
+            tagClassId,
+            tagId,
+            tag.Issuer,
+            data
+        );
     }
 
     function newTagBatch(
@@ -141,7 +148,7 @@ abstract contract DTag is DTagClass {
             Utils.validateTagData(datas[i], fieldTypes);
 
             Common.Tag memory tag = Common.Tag(
-                Version,
+                uint8(Version),
                 tagClassId,
                 owner,
                 datas[i],
@@ -150,7 +157,7 @@ abstract contract DTag is DTagClass {
             _setTag(tagId, tag);
 
             emit NewTag(
-                Version,
+                uint8(Version),
                 objects[i],
                 tagClassId,
                 tagId,
