@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Owner.sol";
 
-contract Accessor is Owner{
+contract Accessor is Owner {
     mapping(address => bool) private accessors; // accessor contact address
 
     event AddAccessor(address accessor);
@@ -15,7 +15,10 @@ contract Accessor is Owner{
     }
 
     function addAccessor(address accessor) external onlyOwner {
-        require(accessor != address(0), "ACCESSOR: new accessor is the zero address");
+        require(
+            accessor != address(0),
+            "ACCESSOR: new accessor is the zero address"
+        );
         accessors[accessor] = true;
         emit AddAccessor(accessor);
     }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./Accessor.sol";
 
-contract Storage is Accessor{
+contract Storage is Accessor {
     mapping(bytes20 => bytes) private db;
 
     function has(bytes20 id) external view returns (bool) {

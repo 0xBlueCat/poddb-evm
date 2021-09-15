@@ -79,10 +79,11 @@ abstract contract DTagClass {
         uint32 expiredTime,
         Common.TagAgent calldata agent
     ) external {
+        require(bytes(tagName).length > 0, "DTAGCLASS: tagName cannot empty");
         Utils.validateTagClassFields(fields);
 
         bytes20 classId = Utils.genTagClassId();
-        require(!this.has(classId), "tagClassId has already exist");
+        require(!this.has(classId), "DTAGCLASS: tagClassId has already exist");
 
         setTagClass(classId, fields, flags, expiredTime, agent);
         setTagClassInfo(classId, tagName, desc, uint32(block.number));
@@ -147,17 +148,17 @@ abstract contract DTagClass {
         Common.TagAgent calldata agent
     ) external {
         Common.TagClass memory class = this.getTagClass(classId);
-        require(class.Owner != address(0), "invalid tagClassId");
+        require(class.Owner != address(0), "DTAGCLASS: invalid tagClassId");
 
         if (agent.Agent != bytes20(0)) {
             require(
                 class.Owner == msg.sender,
-                "only owner can update tag class agent"
+                "DTAGCLASS: only owner can update tag class agent"
             );
         } else {
             require(
                 checkTagClassUpdateAuth(class),
-                "invalid tag class update permission"
+                "DTAGCLASS: invalid tag class update permission"
             );
         }
 
@@ -176,7 +177,7 @@ abstract contract DTagClass {
     {
         bytes memory data = this.get(tagClassId);
         tagClass = Common.deserializeTagClass(data);
-        require(tagClass.Version <= Version, "compatible version");
+        require(tagClass.Version <= Version, "DTAGCLASS: incompatible data version");
         return tagClass;
     }
 
@@ -187,7 +188,7 @@ abstract contract DTagClass {
     {
         bytes memory data = this.get(Utils.genTagClassInfoId(tagClassId));
         classInfo = Common.deserializeTagClassInfo(data);
-        require(classInfo.Version <= Version, "compatible version");
+        require(classInfo.Version <= Version, "DTAGCLASS: incompatible data version");
         return classInfo;
     }
 }

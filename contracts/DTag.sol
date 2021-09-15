@@ -111,13 +111,13 @@ contract DTag is DTagClass {
         bytes20 tagClassId,
         Common.TagObject calldata object,
         bytes calldata data
-    ) external onlyOwner{
+    ) external {
         Common.TagClass memory tagClass = this.getTagClass(tagClassId);
-        require(tagClass.Owner != address(0), "invalid tagClassId");
+        require(tagClass.Owner != address(0), "DTAG: invalid tagClassId");
 
         require(
             checkTagClassIssuerAuth(tagClass),
-            "invalid tagClass issuer permission"
+            "DTAG: invalid tagClass issuer permission"
         );
 
         Common.TagFieldType[] memory fieldTypes = Utils.getFieldTypes(
@@ -131,7 +131,7 @@ contract DTag is DTagClass {
             Common.canMultiIssue(tagClass.Flags)
         );
 
-        require(!this.has(tagId), "tagId has already exist");
+        require(!this.has(tagId), "DTAG: tagId has already exist");
 
         Common.Tag memory tag = Common.Tag(
             uint8(Version),
@@ -157,17 +157,17 @@ contract DTag is DTagClass {
         bytes20 tagClassId,
         Common.TagObject[] calldata objects,
         bytes[] calldata datas
-    ) external onlyOwner{
+    ) external {
         require(
             objects.length == datas.length,
-            "objects length not equal with datas"
+            "DTAG: objects length not equal with datas"
         );
 
         Common.TagClass memory tagClass = this.getTagClass(tagClassId);
         require(tagClass.Owner != address(0), "invalid tagClassId");
         require(
             checkTagClassIssuerAuth(tagClass),
-            "invalid tagClass issuer permission"
+            "DTAG: invalid tagClass issuer permission"
         );
 
         Common.TagFieldType[] memory fieldTypes = Utils.getFieldTypes(
@@ -180,7 +180,7 @@ contract DTag is DTagClass {
 
         for (uint256 i = 0; i < objects.length; i++) {
             tagId = Utils.genTagId(tagClassId, objects[i], canMultiIssue);
-            require(!this.has(tagId), "tagId has already exist");
+            require(!this.has(tagId), "DTAG: tagId has already exist");
 
             Utils.validateTagData(datas[i], fieldTypes);
 
@@ -204,15 +204,15 @@ contract DTag is DTagClass {
         }
     }
 
-    function updateTag(bytes20 tagId, bytes calldata data) external onlyOwner{
+    function updateTag(bytes20 tagId, bytes calldata data) external {
         Common.Tag memory tag = _getTag(tagId);
-        require(tag.ClassId != bytes20(0), "invalid tagId");
+        require(tag.ClassId != bytes20(0), "DTAG: invalid tagId");
 
         Common.TagClass memory tagClass = this.getTagClass(tag.ClassId);
-        require(tagClass.Owner != address(0), "invalid tagClassId of tag");
+        require(tagClass.Owner != address(0), "DTAG: invalid tagClassId of tag");
         require(
             checkTagUpdateAuth(tagClass, tag.Issuer),
-            "invalid tag update permission"
+            "DTAG: invalid tag update permission"
         );
 
         Common.TagFieldType[] memory fieldTypes = Utils.getFieldTypes(
@@ -228,15 +228,15 @@ contract DTag is DTagClass {
         emit UpdateTag(tagId, data);
     }
 
-    function deleteTag(bytes20 tagId) external onlyOwner{
+    function deleteTag(bytes20 tagId) external {
         Common.Tag memory tag = _getTag(tagId);
-        require(tag.ClassId != bytes20(0), "invalid tagId");
+        require(tag.ClassId != bytes20(0), "DTAG: invalid tagId");
 
         Common.TagClass memory tagClass = this.getTagClass(tag.ClassId);
-        require(tagClass.Owner != address(0), "invalid classId of tag");
+        require(tagClass.Owner != address(0), "DTAG: invalid classId of tag");
         require(
             checkTagUpdateAuth(tagClass, tag.Issuer),
-            "invalid tag delete permission"
+            "DTAG: invalid tag delete permission"
         );
 
         del(tagId);
@@ -251,7 +251,7 @@ contract DTag is DTagClass {
     {
         bytes memory data = this.get(tagId);
         tag = Common.deserializeTag(data);
-        require(tag.Version <= Version, "compatible version");
+        require(tag.Version <= Version, "DTAG: incompatible data version");
         return tag;
     }
 
