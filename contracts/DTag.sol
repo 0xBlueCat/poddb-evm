@@ -5,6 +5,7 @@ import "./ReadBuffer.sol";
 import "./Common.sol";
 import "./Utils.sol";
 import "./DTagClass.sol";
+import "./Owner.sol";
 
 abstract contract Storage {
     function has(bytes20 id) external view virtual returns (bool);
@@ -110,7 +111,7 @@ contract DTag is DTagClass {
         bytes20 tagClassId,
         Common.TagObject calldata object,
         bytes calldata data
-    ) external {
+    ) external onlyOwner{
         Common.TagClass memory tagClass = this.getTagClass(tagClassId);
         require(tagClass.Owner != address(0), "invalid tagClassId");
 
@@ -156,7 +157,7 @@ contract DTag is DTagClass {
         bytes20 tagClassId,
         Common.TagObject[] calldata objects,
         bytes[] calldata datas
-    ) external {
+    ) external onlyOwner{
         require(
             objects.length == datas.length,
             "objects length not equal with datas"
@@ -203,7 +204,7 @@ contract DTag is DTagClass {
         }
     }
 
-    function updateTag(bytes20 tagId, bytes calldata data) external {
+    function updateTag(bytes20 tagId, bytes calldata data) external onlyOwner{
         Common.Tag memory tag = _getTag(tagId);
         require(tag.ClassId != bytes20(0), "invalid tagId");
 
@@ -227,7 +228,7 @@ contract DTag is DTagClass {
         emit UpdateTag(tagId, data);
     }
 
-    function deleteTag(bytes20 tagId) external {
+    function deleteTag(bytes20 tagId) external onlyOwner{
         Common.Tag memory tag = _getTag(tagId);
         require(tag.ClassId != bytes20(0), "invalid tagId");
 

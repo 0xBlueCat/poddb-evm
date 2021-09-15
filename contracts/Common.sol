@@ -132,8 +132,8 @@ library Common {
         return wBuf.getBytes();
     }
 
-    function deserializeTagClass(bytes memory data)
-        internal
+    function deserializeTagClass(bytes calldata data)
+        external
         pure
         returns (TagClass memory tagClass)
     {
@@ -199,8 +199,8 @@ library Common {
         return wBuf.getBytes();
     }
 
-    function deserializeTag(bytes memory data)
-        internal
+    function deserializeTag(bytes calldata data)
+        external
         pure
         returns (Tag memory tag)
     {

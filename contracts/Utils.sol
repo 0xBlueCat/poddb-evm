@@ -50,8 +50,8 @@ library Utils {
         return bytes20(keccak256(wBuf.getBytes()));
     }
 
-    function getFieldTypes(bytes calldata fieldTypes)
-        external
+    function getFieldTypes(bytes memory fieldTypes)
+        internal
         pure
         returns (Common.TagFieldType[] memory)
     {
