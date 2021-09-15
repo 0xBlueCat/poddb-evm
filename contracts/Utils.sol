@@ -41,7 +41,7 @@ library Utils {
     }
 
     function genTagClassInfoId(bytes20 classId)
-        internal
+        external
         pure
         returns (bytes20)
     {
@@ -50,8 +50,8 @@ library Utils {
         return bytes20(keccak256(wBuf.getBytes()));
     }
 
-    function getFieldTypes(bytes memory fieldTypes)
-        public
+    function getFieldTypes(bytes calldata fieldTypes)
+        external
         pure
         returns (Common.TagFieldType[] memory)
     {
@@ -66,7 +66,7 @@ library Utils {
         return types;
     }
 
-    function validateTagClassFields(bytes calldata fields) public pure {
+    function validateTagClassFields(bytes calldata fields) external pure {
         ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(fields);
         uint256 len = rBuf.readUint8();
         for (uint256 i = 0; i < len; i++) {
@@ -78,8 +78,8 @@ library Utils {
 
     function validateTagData(
         bytes calldata data,
-        Common.TagFieldType[] memory fieldTypes
-    ) public pure {
+        Common.TagFieldType[] calldata fieldTypes
+    ) external pure {
         ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(data);
         for (uint256 i = 0; i < fieldTypes.length; i++) {
             Common.TagFieldType fieldType = fieldTypes[i];
@@ -89,38 +89,38 @@ library Utils {
             ) {
                 rBuf.skipBytes();
             } else if (
-                fieldType == Common.TagFieldType.Bytes1 ||
                 fieldType == Common.TagFieldType.Uint8 ||
+                fieldType == Common.TagFieldType.Bool ||
                 fieldType == Common.TagFieldType.Int8 ||
-                fieldType == Common.TagFieldType.Bool
+                fieldType == Common.TagFieldType.Bytes1
             ) {
                 rBuf.skip(1);
             } else if (
-                fieldType == Common.TagFieldType.Bytes2 ||
                 fieldType == Common.TagFieldType.Uint16 ||
-                fieldType == Common.TagFieldType.Int16
+                fieldType == Common.TagFieldType.Int16 ||
+                fieldType == Common.TagFieldType.Bytes2
             ) {
                 rBuf.skip(2);
             } else if (
-                fieldType == Common.TagFieldType.Bytes4 ||
                 fieldType == Common.TagFieldType.Uint32 ||
-                fieldType == Common.TagFieldType.Int32
+                fieldType == Common.TagFieldType.Int32 ||
+                fieldType == Common.TagFieldType.Bytes4
             ) {
                 rBuf.skip(4);
             } else if (
-                fieldType == Common.TagFieldType.Bytes8 ||
                 fieldType == Common.TagFieldType.Uint64 ||
-                fieldType == Common.TagFieldType.Int64
+                fieldType == Common.TagFieldType.Int64 ||
+                fieldType == Common.TagFieldType.Bytes8
             ) {
                 rBuf.skip(8);
             } else if (
-                fieldType == Common.TagFieldType.Bytes20 ||
-                fieldType == Common.TagFieldType.Address
+                fieldType == Common.TagFieldType.Address ||
+                fieldType == Common.TagFieldType.Bytes20
             ) {
                 rBuf.skip(20);
             } else if (
-                fieldType == Common.TagFieldType.Bytes32 ||
                 fieldType == Common.TagFieldType.Uint ||
+                fieldType == Common.TagFieldType.Bytes32 ||
                 fieldType == Common.TagFieldType.Int
             ) {
                 rBuf.skip(32);

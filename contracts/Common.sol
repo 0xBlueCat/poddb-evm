@@ -108,7 +108,7 @@ library Common {
         return agent;
     }
 
-    function serializeTagClass(TagClass memory tagClass)
+    function serializeTagClass(TagClass calldata tagClass)
         external
         pure
         returns (bytes memory)
@@ -123,6 +123,7 @@ library Common {
             .writeBytes(tagClass.Fields)
             .writeUint8(tagClass.Flags)
             .writeUint32(tagClass.ExpiredTime);
+
         tagClass.Agent.Agent != bytes20(0)
             ? wBuf.writeBool(true).writeFixedBytes(
                 serializeAgent(tagClass.Agent)
@@ -132,7 +133,7 @@ library Common {
     }
 
     function deserializeTagClass(bytes memory data)
-        external
+        internal
         pure
         returns (TagClass memory tagClass)
     {
@@ -151,7 +152,7 @@ library Common {
         return tagClass;
     }
 
-    function serializeTagClassInfo(TagClassInfo memory classInfo)
+    function serializeTagClassInfo(TagClassInfo calldata classInfo)
         external
         pure
         returns (bytes memory)
@@ -169,7 +170,7 @@ library Common {
         return wBuf.getBytes();
     }
 
-    function deserializeTagClassInfo(bytes memory data)
+    function deserializeTagClassInfo(bytes calldata data)
         external
         pure
         returns (TagClassInfo memory classInfo)
@@ -185,7 +186,7 @@ library Common {
         return classInfo;
     }
 
-    function serializeTag(Tag memory tag) external pure returns (bytes memory) {
+    function serializeTag(Tag memory tag) internal pure returns (bytes memory) {
         WriteBuffer.buffer memory wBuf;
         uint256 count = 47 + tag.Data.length;
         wBuf.init(count);
@@ -199,7 +200,7 @@ library Common {
     }
 
     function deserializeTag(bytes memory data)
-        external
+        internal
         pure
         returns (Tag memory tag)
     {
@@ -215,15 +216,15 @@ library Common {
         return tag;
     }
 
-    function canMultiIssue(uint8 flag) external pure returns (bool) {
+    function canMultiIssue(uint8 flag) internal pure returns (bool) {
         return flag & 1 != 0;
     }
 
-    function canInherit(uint8 flag) external pure returns (bool) {
+    function canInherit(uint8 flag) internal pure returns (bool) {
         return flag & 2 != 0;
     }
 
-    function isPublic(uint8 flag) external pure returns (bool) {
+    function isPublic(uint8 flag) internal pure returns (bool) {
         return flag & 4 != 0;
     }
 }

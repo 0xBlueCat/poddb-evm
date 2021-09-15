@@ -112,7 +112,7 @@ contract DTag is DTagClass {
         bytes calldata data
     ) external {
         Common.TagClass memory tagClass = this.getTagClass(tagClassId);
-        require(tagClass.Owner != address(0), "invalid tagCclassId");
+        require(tagClass.Owner != address(0), "invalid tagClassId");
 
         require(
             checkTagClassIssuerAuth(tagClass),
