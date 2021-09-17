@@ -5,16 +5,15 @@ import "./ReadBuffer.sol";
 import "./Common.sol";
 import "./Utils.sol";
 import "./DTagClass.sol";
-import "./Owner.sol";
 
-abstract contract Storage {
-    function has(bytes20 id) external view virtual returns (bool);
+interface IStorage {
+    function has(bytes20 id) external view returns (bool);
 
-    function get(bytes20 id) external view virtual returns (bytes memory);
+    function get(bytes20 id) external view returns (bytes memory);
 
-    function set(bytes20 id, bytes calldata data) external virtual;
+    function set(bytes20 id, bytes calldata data) external;
 
-    function del(bytes20 id) external virtual;
+    function del(bytes20 id) external;
 }
 
 contract DTag is DTagClass {
@@ -23,51 +22,37 @@ contract DTag is DTagClass {
     using Common for *;
     using Utils for *;
 
-    event NewTag(
-        uint8 version,
-        Common.TagObject object,
-        bytes20 tagClassId,
-        bytes20 id,
-        address issuer,
-        bytes data
-    );
-
-    event UpdateTag(bytes20 id, bytes data);
-    event DeleteTag(bytes20 id);
-
     address private storageContact;
 
-    constructor(address _storageContact) {
+    constructor(address _storageContact) DTagClass() {
         storageContact = _storageContact;
     }
 
     function has(bytes20 id) external view override returns (bool) {
-        Storage db = Storage(storageContact);
+        IStorage db = IStorage(storageContact);
         return db.has(id);
     }
 
     function get(bytes20 id) external view override returns (bytes memory) {
-        Storage db = Storage(storageContact);
+        IStorage db = IStorage(storageContact);
         return db.get(id);
     }
 
     function set(bytes20 id, bytes memory data) internal override {
-        Storage db = Storage(storageContact);
+        IStorage db = IStorage(storageContact);
         db.set(id, data);
     }
 
     function del(bytes20 id) internal override {
-        Storage db = Storage(storageContact);
+        IStorage db = IStorage(storageContact);
         db.del(id);
     }
 
-    function checkTagClassUpdateAuth(Common.TagClass memory tagClass)
-        internal
-        view
-        override
-        returns (bool)
-    {
-        if (tagClass.Owner == msg.sender) {
+    function checkTagClassUpdateAuth(
+        address sender,
+        Common.TagClass memory tagClass
+    ) internal view override returns (bool) {
+        if (tagClass.Owner == sender) {
             return true;
         }
         //check agent of owner permission
@@ -76,48 +61,46 @@ contract DTag is DTagClass {
             return false;
         }
         if (tagClass.Agent.Type == Common.AgentType.Address) {
-            return tagClass.Agent.Agent == bytes20(msg.sender);
+            return tagClass.Agent.Agent == bytes20(sender);
         }
-        Common.TagObject memory object = Common.TagObject(
-            msg.sender,
-            uint256(0)
-        );
+        Common.TagObject memory object = Common.TagObject(sender, uint256(0));
         return this.hasTag(tagClass.Agent.Agent, object);
     }
 
-    function checkTagClassIssuerAuth(Common.TagClass memory tagClass)
+    function checkTagIssuerAuth(address sender, Common.TagClass memory tagClass)
         internal
         view
-        override
         returns (bool)
     {
-        if (Common.isPublic(tagClass.Flags)) {
+        if (Utils.isPublic(tagClass.Flags)) {
             return true;
         }
-        return checkTagClassUpdateAuth(tagClass);
+        return checkTagClassUpdateAuth(sender, tagClass);
     }
 
     function checkTagUpdateAuth(
+        address sender,
         Common.TagClass memory tagClass,
         address tagIssuer
     ) internal view returns (bool) {
-        if (Common.isPublic(tagClass.Flags)) {
-            return tagIssuer == msg.sender;
+        if (Utils.isPublic(tagClass.Flags)) {
+            return tagIssuer == sender;
         }
-        return checkTagClassUpdateAuth(tagClass);
+        return checkTagClassUpdateAuth(sender, tagClass);
     }
 
     function newTag(
+        address sender,
         bytes20 tagClassId,
         Common.TagObject calldata object,
         bytes calldata data
-    ) external {
+    ) external onlyOwner returns (bytes20) {
         Common.TagClass memory tagClass = this.getTagClass(tagClassId);
         require(tagClass.Owner != address(0), "DTAG: invalid tagClassId");
 
         require(
-            checkTagClassIssuerAuth(tagClass),
-            "DTAG: invalid tagClass issuer permission"
+            checkTagIssuerAuth(sender, tagClass),
+            "DTAG: invalid tagClass issuer auth"
         );
 
         Common.TagFieldType[] memory fieldTypes = Utils.getFieldTypes(
@@ -128,7 +111,7 @@ contract DTag is DTagClass {
         bytes20 tagId = Utils.genTagId(
             tagClassId,
             object,
-            Common.canMultiIssue(tagClass.Flags)
+            Utils.canMultiIssue(tagClass.Flags)
         );
 
         require(!this.has(tagId), "DTAG: tagId has already exist");
@@ -136,28 +119,21 @@ contract DTag is DTagClass {
         Common.Tag memory tag = Common.Tag(
             uint8(Version),
             tagClassId,
-            msg.sender,
+            sender,
             data,
             uint32(block.number)
         );
 
         _setTag(tagId, tag);
-
-        emit NewTag(
-            uint8(Version),
-            object,
-            tagClassId,
-            tagId,
-            tag.Issuer,
-            data
-        );
+        return tagId;
     }
 
     function newTagBatch(
+        address sender,
         bytes20 tagClassId,
         Common.TagObject[] calldata objects,
         bytes[] calldata datas
-    ) external {
+    ) external onlyOwner returns (bytes20[] memory) {
         require(
             objects.length == datas.length,
             "DTAG: objects length not equal with datas"
@@ -166,53 +142,65 @@ contract DTag is DTagClass {
         Common.TagClass memory tagClass = this.getTagClass(tagClassId);
         require(tagClass.Owner != address(0), "invalid tagClassId");
         require(
-            checkTagClassIssuerAuth(tagClass),
-            "DTAG: invalid tagClass issuer permission"
+            checkTagIssuerAuth(sender, tagClass),
+            "DTAG: invalid tagClass issuer auth"
         );
 
         Common.TagFieldType[] memory fieldTypes = Utils.getFieldTypes(
             tagClass.Fields
         );
-        bool canMultiIssue = Common.canMultiIssue(tagClass.Flags);
-        uint32 updateAt = uint32(block.number);
-        address owner = msg.sender;
-        bytes20 tagId;
+        bool canMultiIssue = Utils.canMultiIssue(tagClass.Flags);
 
+        bytes20[] memory tagIds = new bytes20[](objects.length);
         for (uint256 i = 0; i < objects.length; i++) {
-            tagId = Utils.genTagId(tagClassId, objects[i], canMultiIssue);
-            require(!this.has(tagId), "DTAG: tagId has already exist");
-
-            Utils.validateTagData(datas[i], fieldTypes);
-
-            Common.Tag memory tag = Common.Tag(
-                uint8(Version),
+            bytes20 tagId = Utils.genTagId(
                 tagClassId,
-                owner,
-                datas[i],
-                updateAt
-            );
-            _setTag(tagId, tag);
-
-            emit NewTag(
-                uint8(Version),
                 objects[i],
-                tagClassId,
-                tagId,
-                owner,
-                datas[i]
+                canMultiIssue
             );
+            _newTagBatch(sender, tagClassId, tagId, fieldTypes, datas[i]);
+            tagIds[i] = tagId;
         }
+        return tagIds;
     }
 
-    function updateTag(bytes20 tagId, bytes calldata data) external {
+    function _newTagBatch(
+        address sender,
+        bytes20 classId,
+        bytes20 tagId,
+        Common.TagFieldType[] memory fieldTypes,
+        bytes calldata data
+    ) internal {
+        require(!this.has(tagId), "DTAG: tagId has already exist");
+
+        Utils.validateTagData(data, fieldTypes);
+
+        Common.Tag memory tag = Common.Tag(
+            uint8(Version),
+            classId,
+            sender,
+            data,
+            uint32(block.number)
+        );
+        _setTag(tagId, tag);
+    }
+
+    function updateTag(
+        address sender,
+        bytes20 tagId,
+        bytes calldata data
+    ) external onlyOwner {
         Common.Tag memory tag = _getTag(tagId);
         require(tag.ClassId != bytes20(0), "DTAG: invalid tagId");
 
         Common.TagClass memory tagClass = this.getTagClass(tag.ClassId);
-        require(tagClass.Owner != address(0), "DTAG: invalid tagClassId of tag");
         require(
-            checkTagUpdateAuth(tagClass, tag.Issuer),
-            "DTAG: invalid tag update permission"
+            tagClass.Owner != address(0),
+            "DTAG: invalid tagClassId of tag"
+        );
+        require(
+            checkTagUpdateAuth(sender, tagClass, tag.Issuer),
+            "DTAG: invalid tag update auth"
         );
 
         Common.TagFieldType[] memory fieldTypes = Utils.getFieldTypes(
@@ -224,24 +212,20 @@ contract DTag is DTagClass {
         tag.UpdateAt = uint32(block.number);
 
         _setTag(tagId, tag);
-
-        emit UpdateTag(tagId, data);
     }
 
-    function deleteTag(bytes20 tagId) external {
+    function deleteTag(address sender, bytes20 tagId) external onlyOwner {
         Common.Tag memory tag = _getTag(tagId);
         require(tag.ClassId != bytes20(0), "DTAG: invalid tagId");
 
         Common.TagClass memory tagClass = this.getTagClass(tag.ClassId);
         require(tagClass.Owner != address(0), "DTAG: invalid classId of tag");
         require(
-            checkTagUpdateAuth(tagClass, tag.Issuer),
-            "DTAG: invalid tag delete permission"
+            checkTagUpdateAuth(sender, tagClass, tag.Issuer),
+            "DTAG: invalid tag delete auth"
         );
 
         del(tagId);
-
-        emit DeleteTag(tagId);
     }
 
     function _getTag(bytes20 tagId)
@@ -250,13 +234,13 @@ contract DTag is DTagClass {
         returns (Common.Tag memory tag)
     {
         bytes memory data = this.get(tagId);
-        tag = Common.deserializeTag(data);
+        tag = Utils.deserializeTag(data);
         require(tag.Version <= Version, "DTAG: incompatible data version");
         return tag;
     }
 
     function _setTag(bytes20 tagId, Common.Tag memory tag) internal {
-        bytes memory data = Common.serializeTag(tag);
+        bytes memory data = Utils.serializeTag(tag);
         set(tagId, data);
     }
 
@@ -291,7 +275,7 @@ contract DTag is DTagClass {
             return (tag, valid);
         }
         Common.TagClass memory tagClass = this.getTagClass(tagClassId);
-        if (!Common.canInherit(tagClass.Flags)) {
+        if (!Utils.canInherit(tagClass.Flags)) {
             return (tag, valid);
         }
         //check whether inherit from contact

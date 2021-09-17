@@ -6,6 +6,8 @@ import "./Accessor.sol";
 contract Storage is Accessor {
     mapping(bytes20 => bytes) private db;
 
+    constructor() Accessor() {}
+
     function has(bytes20 id) external view returns (bool) {
         return db[id].length > 0;
     }

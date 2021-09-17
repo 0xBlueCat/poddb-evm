@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
-import dTag from "../artifacts/contracts/DTag.sol/DTag.json";
+import podDB from "../artifacts/contracts/PodDB.sol/PodDB.json";
 import storage from "../artifacts/contracts/Storage.sol/Storage.json";
+
 import {
   AgentType,
   buildTagObject,
@@ -13,17 +14,17 @@ import { WriteBuffer } from "./WriteBuffer";
 import { ReadBuffer } from "./ReadBuffer";
 
 const storageAddress = "0xD42912755319665397FF090fBB63B1a31aE87Cee";
-const podDBAddress = "0xB9d9e972100a1dD01cd441774b45b5821e136043";
+const podDBAddress = "0xA7c59f010700930003b33aB25a7a0679C860f29c";
 
 const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
 const wallet = new ethers.Wallet(
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
   provider
 );
-const contact = new ethers.Contract(podDBAddress, dTag.abi, provider).connect(
+const contact = new ethers.Contract(podDBAddress, podDB.abi, provider).connect(
   wallet
 );
-const iface = new ethers.utils.Interface(dTag.abi);
+const iface = new ethers.utils.Interface(podDB.abi);
 
 async function newTagClass(): Promise<string> {
   const tagFields = new TagClassFieldBuilder()
@@ -38,7 +39,7 @@ async function newTagClass(): Promise<string> {
     0,
     NoTagAgent
   );
-  // console.log("dTagTx:", JSON.stringify(dTagTx, undefined, 2));
+  console.log("dTagTx:", JSON.stringify(dTagTx, undefined, 2));
   //
   await dTagTx.wait();
   // const tx = await provider.getTransaction(dTagTx.hash);
@@ -49,7 +50,7 @@ async function newTagClass(): Promise<string> {
   const parseLogs = await iface.parseLog(rcp.logs[0]);
   console.log("ParsedLogs:", JSON.stringify(parseLogs.args, undefined, 2));
 
-  return parseLogs.args[1];
+  return parseLogs.args[0];
 }
 
 async function newTag(tagClassId: string) {
@@ -59,6 +60,16 @@ async function newTag(tagClassId: string) {
     buildTagObject("0xEc929115b0a4A687BAaa81CA760cbF15380F7D0C"),
     data
   );
+  // console.log("dTagTx:", JSON.stringify(dTagTx, undefined, 2));
+  await dTagTx.wait();
+  const rcp = await provider.getTransactionReceipt(dTagTx.hash);
+  // console.log("Receipt:", JSON.stringify(rcp, undefined, 2));
+  const parseLogs = await iface.parseLog(rcp.logs[0]);
+  console.log("ParsedLogs:", JSON.stringify(parseLogs.args, undefined, 2));
+}
+
+async function deleteTag(tagId: string) {
+  const dTagTx = await contact.deleteTag(tagId);
   // console.log("dTagTx:", JSON.stringify(dTagTx, undefined, 2));
   await dTagTx.wait();
   const rcp = await provider.getTransactionReceipt(dTagTx.hash);
@@ -79,7 +90,7 @@ async function testStorage(): Promise<void> {
 }
 
 async function testDTag(): Promise<void> {
-  const iface = new ethers.utils.Interface(dTag.abi);
+  const iface = new ethers.utils.Interface(podDB.abi);
   const data = new WriteBuffer().writeString("Hello").writeUint8(24).getBytes();
   // const dTagTx = await contact.get("0x2ad251bdaae0430e5e5430a80710da19e5b2671c");
   const dTagTx = await contact.newTag(
@@ -120,6 +131,7 @@ async function testDTag(): Promise<void> {
 async function main(): Promise<void> {
   const tagSchemaId = await newTagClass();
   await newTag(tagSchemaId);
+  // await deleteTag("0x987feeb082ec6adf565ce8a1c4c2dac108b598b8");
   // await testDTag();
 
   // await testStorage();

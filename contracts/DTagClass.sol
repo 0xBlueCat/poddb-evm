@@ -4,8 +4,9 @@ import "./WriteBuffer.sol";
 import "./ReadBuffer.sol";
 import "./Common.sol";
 import "./Utils.sol";
+import "./librarys/Ownable.sol";
 
-abstract contract DTagClass {
+abstract contract DTagClass is Ownable {
     using WriteBuffer for WriteBuffer.buffer;
     using ReadBuffer for ReadBuffer.buffer;
     using Common for *;
@@ -13,25 +14,7 @@ abstract contract DTagClass {
 
     uint256 constant Version = 1;
 
-    event NewTagClass(
-        uint8 version,
-        bytes20 classId,
-        string name,
-        address owner,
-        bytes fields,
-        string desc,
-        uint8 flags,
-        uint32 expiredTime,
-        Common.TagAgent agent
-    );
-
-    event UpdateTagClass(
-        bytes20 classId,
-        string name,
-        string desc,
-        uint8 flags,
-        Common.TagAgent agent
-    );
+    constructor() Ownable() {}
 
     function has(bytes20 id) external view virtual returns (bool);
 
@@ -42,6 +25,7 @@ abstract contract DTagClass {
     function del(bytes20 id) internal virtual;
 
     function setTagClass(
+        address sender,
         bytes20 classId,
         bytes memory fields,
         uint8 flags,
@@ -50,76 +34,38 @@ abstract contract DTagClass {
     ) internal {
         Common.TagClass memory tagClass = Common.TagClass(
             uint8(Version),
-            msg.sender,
+            sender,
             fields,
             flags,
             expiredTime,
             agent
         );
-        set(classId, Common.serializeTagClass(tagClass));
+        set(classId, Utils.serializeTagClass(tagClass));
     }
 
-    function checkTagClassUpdateAuth(Common.TagClass memory tagClass)
-        internal
-        view
-        virtual
-        returns (bool);
-
-    function checkTagClassIssuerAuth(Common.TagClass memory tagClass)
-        internal
-        view
-        virtual
-        returns (bool);
+    function checkTagClassUpdateAuth(
+        address sender,
+        Common.TagClass memory tagClass
+    ) internal view virtual returns (bool);
 
     function newTagClass(
+        address sender,
         string calldata tagName,
         bytes calldata fields,
         string calldata desc,
         uint8 flags,
         uint32 expiredTime,
         Common.TagAgent calldata agent
-    ) external {
+    ) external onlyOwner returns (bytes20) {
         require(bytes(tagName).length > 0, "DTAGCLASS: tagName cannot empty");
         Utils.validateTagClassFields(fields);
 
         bytes20 classId = Utils.genTagClassId();
         require(!this.has(classId), "DTAGCLASS: tagClassId has already exist");
 
-        setTagClass(classId, fields, flags, expiredTime, agent);
+        setTagClass(sender, classId, fields, flags, expiredTime, agent);
         setTagClassInfo(classId, tagName, desc, uint32(block.number));
-
-        //to avoid Stack too deep issue
-        emitNewTagClass(
-            classId,
-            tagName,
-            fields,
-            desc,
-            flags,
-            expiredTime,
-            agent
-        );
-    }
-
-    function emitNewTagClass(
-        bytes20 classId,
-        string calldata tagName,
-        bytes calldata fields,
-        string calldata desc,
-        uint8 flags,
-        uint32 expiredTime,
-        Common.TagAgent calldata agent
-    ) private {
-        emit NewTagClass(
-            uint8(Version),
-            classId,
-            tagName,
-            msg.sender,
-            fields,
-            desc,
-            flags,
-            expiredTime,
-            agent
-        );
+        return classId;
     }
 
     function setTagClassInfo(
@@ -135,39 +81,38 @@ abstract contract DTagClass {
             desc,
             createAt
         );
-        bytes memory data = Common.serializeTagClassInfo(classInfo);
+        bytes memory data = Utils.serializeTagClassInfo(classInfo);
         set(id, data);
     }
 
     function updateTagClass(
+        address sender,
         bytes20 classId,
         string calldata tagName,
         string calldata desc,
         uint8 flags,
         uint32 expiredTime,
         Common.TagAgent calldata agent
-    ) external {
+    ) external onlyOwner {
         Common.TagClass memory class = this.getTagClass(classId);
         require(class.Owner != address(0), "DTAGCLASS: invalid tagClassId");
 
         if (agent.Agent != bytes20(0)) {
             require(
-                class.Owner == msg.sender,
+                class.Owner == sender,
                 "DTAGCLASS: only owner can update tag class agent"
             );
         } else {
             require(
-                checkTagClassUpdateAuth(class),
-                "DTAGCLASS: invalid tag class update permission"
+                checkTagClassUpdateAuth(sender, class),
+                "DTAGCLASS: invalid tag class update auth"
             );
         }
 
-        setTagClass(classId, class.Fields, flags, expiredTime, agent);
+        setTagClass(sender, classId, class.Fields, flags, expiredTime, agent);
 
         Common.TagClassInfo memory classInfo = this.getTagClassInfo(classId);
         setTagClassInfo(classId, tagName, desc, classInfo.CreateAt);
-
-        emit UpdateTagClass(classId, tagName, desc, flags, agent);
     }
 
     function getTagClass(bytes20 tagClassId)
@@ -176,8 +121,11 @@ abstract contract DTagClass {
         returns (Common.TagClass memory tagClass)
     {
         bytes memory data = this.get(tagClassId);
-        tagClass = Common.deserializeTagClass(data);
-        require(tagClass.Version <= Version, "DTAGCLASS: incompatible data version");
+        tagClass = Utils.deserializeTagClass(data);
+        require(
+            tagClass.Version <= Version,
+            "DTAGCLASS: incompatible data version"
+        );
         return tagClass;
     }
 
@@ -187,8 +135,11 @@ abstract contract DTagClass {
         returns (Common.TagClassInfo memory classInfo)
     {
         bytes memory data = this.get(Utils.genTagClassInfoId(tagClassId));
-        classInfo = Common.deserializeTagClassInfo(data);
-        require(classInfo.Version <= Version, "DTAGCLASS: incompatible data version");
+        classInfo = Utils.deserializeTagClassInfo(data);
+        require(
+            classInfo.Version <= Version,
+            "DTAGCLASS: incompatible data version"
+        );
         return classInfo;
     }
 }

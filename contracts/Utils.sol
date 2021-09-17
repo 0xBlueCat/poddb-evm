@@ -1,14 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.4;
 
-/**
- * @dev A library for working with mutable byte buffers in Solidity.
- *
- * Byte buffers are mutable and expandable, and provide a variety of primitives
- * for writing to them. At any time you can fetch a bytes object containing the
- * current contents of the buffer. The bytes object should not be stored between
- * operations, as it may change due to resizing of the buffer.
- */
 import "./Common.sol";
 import "./WriteBuffer.sol";
 import "./ReadBuffer.sol";
@@ -18,7 +10,155 @@ library Utils {
     using ReadBuffer for *;
     using Common for *;
 
-    function genTagClassId() external view returns (bytes20 id) {
+    function serializeAgent(Common.TagAgent memory agent)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        WriteBuffer.buffer memory wBuf;
+        wBuf.init(21).writeUint8(uint8(agent.Type)).writeBytes20(agent.Agent);
+        return wBuf.getBytes();
+    }
+
+    function deserializeAgent(bytes memory data)
+        internal
+        pure
+        returns (Common.TagAgent memory agent)
+    {
+        if (data.length == 0) {
+            return agent;
+        }
+        ReadBuffer.buffer memory buf = ReadBuffer.fromBytes(data);
+        agent.Type = Common.AgentType(buf.readUint8());
+        agent.Agent = buf.readBytes20();
+        return agent;
+    }
+
+    function serializeTagClass(Common.TagClass calldata tagClass)
+        external
+        pure
+        returns (bytes memory)
+    {
+        WriteBuffer.buffer memory wBuf;
+        uint256 count = 50 + tagClass.Fields.length;
+
+        wBuf
+            .init(count)
+            .writeUint8(tagClass.Version)
+            .writeAddress(tagClass.Owner)
+            .writeBytes(tagClass.Fields)
+            .writeUint8(tagClass.Flags)
+            .writeUint32(tagClass.ExpiredTime);
+
+        tagClass.Agent.Agent != bytes20(0)
+            ? wBuf.writeBool(true).writeFixedBytes(
+                serializeAgent(tagClass.Agent)
+            )
+            : wBuf.writeBool(false);
+        return wBuf.getBytes();
+    }
+
+    function deserializeTagClass(bytes calldata data)
+        external
+        pure
+        returns (Common.TagClass memory tagClass)
+    {
+        if (data.length == 0) {
+            return tagClass;
+        }
+        ReadBuffer.buffer memory buf = ReadBuffer.fromBytes(data);
+        tagClass.Version = buf.readUint8();
+        tagClass.Owner = buf.readAddress();
+        tagClass.Fields = buf.readBytes();
+        tagClass.Flags = buf.readUint8();
+        tagClass.ExpiredTime = buf.readUint32();
+        if (buf.readBool()) {
+            tagClass.Agent = deserializeAgent(buf.readFixedBytes(21));
+        }
+        return tagClass;
+    }
+
+    function serializeTagClassInfo(Common.TagClassInfo calldata classInfo)
+        external
+        pure
+        returns (bytes memory)
+    {
+        WriteBuffer.buffer memory wBuf;
+        uint256 count = 9 +
+            bytes(classInfo.TagName).length +
+            bytes(classInfo.Desc).length;
+        wBuf
+            .init(count)
+            .writeUint8(classInfo.Version)
+            .writeString(classInfo.TagName)
+            .writeString(classInfo.Desc)
+            .writeUint32(classInfo.CreateAt);
+        return wBuf.getBytes();
+    }
+
+    function deserializeTagClassInfo(bytes calldata data)
+        external
+        pure
+        returns (Common.TagClassInfo memory classInfo)
+    {
+        if (data.length == 0) {
+            return classInfo;
+        }
+        ReadBuffer.buffer memory buf = ReadBuffer.fromBytes(data);
+        classInfo.Version = buf.readUint8();
+        classInfo.TagName = buf.readString();
+        classInfo.Desc = buf.readString();
+        classInfo.CreateAt = buf.readUint32();
+        return classInfo;
+    }
+
+    function serializeTag(Common.Tag memory tag)
+        internal
+        pure
+        returns (bytes memory)
+    {
+        WriteBuffer.buffer memory wBuf;
+        uint256 count = 47 + tag.Data.length;
+        wBuf.init(count);
+        wBuf
+            .writeUint8(tag.Version)
+            .writeBytes20(tag.ClassId)
+            .writeAddress(tag.Issuer)
+            .writeBytes(tag.Data)
+            .writeUint32(tag.UpdateAt);
+        return wBuf.getBytes();
+    }
+
+    function deserializeTag(bytes calldata data)
+        external
+        pure
+        returns (Common.Tag memory tag)
+    {
+        if (data.length == 0) {
+            return tag;
+        }
+        ReadBuffer.buffer memory buf = ReadBuffer.fromBytes(data);
+        tag.Version = buf.readUint8();
+        tag.ClassId = buf.readBytes20();
+        tag.Issuer = buf.readAddress();
+        tag.Data = buf.readBytes();
+        tag.UpdateAt = buf.readUint32();
+        return tag;
+    }
+
+    function canMultiIssue(uint8 flag) internal pure returns (bool) {
+        return flag & 1 != 0;
+    }
+
+    function canInherit(uint8 flag) internal pure returns (bool) {
+        return flag & 2 != 0;
+    }
+
+    function isPublic(uint8 flag) internal pure returns (bool) {
+        return flag & 4 != 0;
+    }
+
+    function genTagClassId() internal view returns (bytes20 id) {
         WriteBuffer.buffer memory wBuf;
         wBuf.init(52).writeAddress(msg.sender).writeUint(block.number);
         return bytes20(keccak256(wBuf.getBytes()));
@@ -41,7 +181,7 @@ library Utils {
     }
 
     function genTagClassInfoId(bytes20 classId)
-        external
+        internal
         pure
         returns (bytes20)
     {

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "./Owner.sol";
+import "./librarys/Ownable.sol";
 
-contract Accessor is Owner {
+contract Accessor is Ownable {
     mapping(address => bool) private accessors; // accessor contact address
 
     event AddAccessor(address accessor);
@@ -13,6 +13,8 @@ contract Accessor is Owner {
         require(accessors[msg.sender], "ACCESSOR: not allowed accessor");
         _;
     }
+
+    constructor() Ownable() {}
 
     function addAccessor(address accessor) external onlyOwner {
         require(
