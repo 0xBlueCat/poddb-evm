@@ -46,6 +46,31 @@ interface ITag {
     ) external;
 
     function deleteTag(address sender, bytes20 tagId) external;
+
+    function getTagClass(bytes20 tagClassId)
+        external
+        view
+        returns (Common.TagClass memory tagClass);
+
+    function getTagClassInfo(bytes20 tagClassId)
+        external
+        view
+        returns (Common.TagClassInfo memory classInfo);
+
+    function getTag(bytes20 tagId)
+        external
+        view
+        returns (Common.Tag memory tag, bool valid);
+
+    function getTag(bytes20 tagClassId, Common.TagObject calldata object)
+        external
+        view
+        returns (Common.Tag memory tag, bool valid);
+
+    function hasTag(bytes20 tagClassId, Common.TagObject calldata object)
+        external
+        view
+        returns (bool valid);
 }
 
 contract PodDB is Ownable {
@@ -184,5 +209,50 @@ contract PodDB is Ownable {
         ITag tagC = ITag(tagContract);
         tagC.deleteTag(msg.sender, tagId);
         emit DeleteTag(tagId);
+    }
+
+    function getTagClass(bytes20 tagClassId)
+        external
+        view
+        returns (Common.TagClass memory tagClass)
+    {
+        ITag tagC = ITag(tagContract);
+        return tagC.getTagClass(tagClassId);
+    }
+
+    function getTagClassInfo(bytes20 tagClassId)
+        external
+        view
+        returns (Common.TagClassInfo memory classInfo)
+    {
+        ITag tagC = ITag(tagContract);
+        return tagC.getTagClassInfo(tagClassId);
+    }
+
+    function getTagById(bytes20 tagId)
+        external
+        view
+        returns (Common.Tag memory tag, bool valid)
+    {
+        ITag tagC = ITag(tagContract);
+        return tagC.getTag(tagId);
+    }
+
+    function getTag(bytes20 tagClassId, Common.TagObject calldata object)
+        external
+        view
+        returns (Common.Tag memory tag, bool valid)
+    {
+        ITag tagC = ITag(tagContract);
+        return tagC.getTag(tagClassId, object);
+    }
+
+    function hasTag(bytes20 tagClassId, Common.TagObject calldata object)
+        external
+        view
+        returns (bool valid)
+    {
+        ITag tagC = ITag(tagContract);
+        return tagC.hasTag(tagClassId, object);
     }
 }

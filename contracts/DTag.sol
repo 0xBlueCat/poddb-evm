@@ -265,7 +265,7 @@ contract DTag is DTagClass {
         view
         returns (Common.Tag memory tag, bool valid)
     {
-        bytes20 tagId = Utils.genTagId(tagClassId, object, true);
+        bytes20 tagId = Utils.genTagId(tagClassId, object, false);
         (tag, valid) = this.getTag(tagId);
         if (valid) {
             return (tag, valid);
@@ -281,7 +281,7 @@ contract DTag is DTagClass {
         //check whether inherit from contact
         Common.TagObject memory contractObj;
         contractObj.Address = object.Address;
-        tagId = Utils.genTagId(tagClassId, contractObj, true);
+        tagId = Utils.genTagId(tagClassId, contractObj, false);
         return this.getTag(tagId);
     }
 

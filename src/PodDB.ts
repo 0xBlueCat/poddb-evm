@@ -46,11 +46,16 @@ export class TagAgentBuilder {
 
 export const NoTagAgent = new TagAgentBuilder(AgentType.Address, "0x").build();
 
+export type TagObject = [string, string];
+
 export function buildTagObject(
   address: string,
-  tokenId: string = "0"
-): [string, string] {
+  tokenId?: number | string | ethers.BigNumber
+): TagObject {
   const addressStr = new WriteBuffer(20).writeAddress(address).getBytes();
+  if (tokenId == undefined) {
+    tokenId = 0;
+  }
   const tokenIdsStr = new WriteBuffer(20)
     .writeUint(ethers.BigNumber.from(tokenId))
     .getBytes();
