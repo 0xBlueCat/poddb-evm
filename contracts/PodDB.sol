@@ -1,121 +1,27 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "./Common.sol";
+import "./IPodDB.sol";
 import "./librarys/Ownable.sol";
+import "./IDriver.sol";
+import "./WriteBuffer.sol";
+import "./ReadBuffer.sol";
+import "./TagFlags.sol";
+import "./Validator.sol";
 
-interface ITag {
-    function newTagClass(
-        address sender,
-        string calldata tagName,
-        bytes calldata fields,
-        string calldata desc,
-        uint8 flags,
-        uint32 expiredTime,
-        Common.TagAgent calldata agent
-    ) external returns (bytes20);
+contract PodDB is Ownable, IPodDB {
+    using WriteBuffer for *;
+    using ReadBuffer for *;
+    using TagFlags for *;
+    using Validator for *;
 
-    function updateTagClass(
-        address sender,
-        bytes20 classId,
-        string calldata tagName,
-        string calldata desc,
-        uint8 flags,
-        uint32 expiredTime,
-        Common.TagAgent calldata agent
-    ) external;
+    IDriver private driver;
 
-    function newTag(
-        address sender,
-        bytes20 tagClassId,
-        Common.TagObject calldata object,
-        bytes calldata data
-    ) external returns (bytes20);
+    uint256 public constant Version = 1;
 
-    function newTagBatch(
-        address sender,
-        bytes20 tagClassId,
-        Common.TagObject[] calldata objects,
-        bytes[] calldata datas
-    ) external returns (bytes20[] memory);
-
-    function updateTag(
-        address sender,
-        bytes20 tagId,
-        bytes calldata data
-    ) external;
-
-    function deleteTag(address sender, bytes20 tagId) external;
-
-    function getTagClass(bytes20 tagClassId)
-        external
-        view
-        returns (Common.TagClass memory tagClass);
-
-    function getTagClassInfo(bytes20 tagClassId)
-        external
-        view
-        returns (Common.TagClassInfo memory classInfo);
-
-    function getTag(bytes20 tagId)
-        external
-        view
-        returns (Common.Tag memory tag, bool valid);
-
-    function getTag(bytes20 tagClassId, Common.TagObject calldata object)
-        external
-        view
-        returns (Common.Tag memory tag, bool valid);
-
-    function hasTag(bytes20 tagClassId, Common.TagObject calldata object)
-        external
-        view
-        returns (bool valid);
-}
-
-contract PodDB is Ownable {
-    event NewTagClass(
-        bytes20 classId,
-        string name,
-        address owner,
-        bytes fields,
-        string desc,
-        uint8 flags,
-        uint32 expiredTime,
-        Common.TagAgent agent
-    );
-
-    event UpdateTagClass(
-        bytes20 classId,
-        string name,
-        string desc,
-        uint8 flags,
-        Common.TagAgent agent
-    );
-
-    event NewTag(
-        Common.TagObject object,
-        bytes20 tagClassId,
-        bytes20 id,
-        address issuer,
-        bytes data
-    );
-
-    event UpdateTag(bytes20 id, bytes data);
-
-    event DeleteTag(bytes20 id);
-
-    address private tagContract;
-
-    constructor(address _tagContract) Ownable() {
-        tagContract = _tagContract;
+    constructor(address _driver) Ownable() {
+        driver = IDriver(_driver);
     }
-
-    function changeTagContract(address _tagContract) external onlyOwner {
-        tagContract = _tagContract;
-    }
-
-    event test(string msg);
 
     function newTagClass(
         string calldata tagName,
@@ -123,18 +29,32 @@ contract PodDB is Ownable {
         string calldata desc,
         uint8 flags,
         uint32 expiredTime,
-        Common.TagAgent calldata agent
-    ) external returns (bytes20 classId) {
-        ITag tagC = ITag(tagContract);
-        classId = tagC.newTagClass(
+        TagAgent calldata agent
+    ) external override returns (bytes20) {
+        require(bytes(tagName).length > 0, "PODDB: tagName cannot empty");
+
+        bytes20 classId = genTagClassId();
+        require(!_hasTagClass(classId), "PODDB: tagClassId has already exist");
+
+        TagClass memory tagClass = TagClass(
+            classId,
+            uint8(Version),
             msg.sender,
-            tagName,
             fields,
-            desc,
             flags,
             expiredTime,
             agent
         );
+        TagClassInfo memory classInfo = TagClassInfo(
+            classId,
+            uint8(Version),
+            tagName,
+            desc,
+            uint32(block.number)
+        );
+
+        _setTagClassAll(tagClass, classInfo);
+
         emit NewTagClass(
             classId,
             tagName,
@@ -148,111 +68,354 @@ contract PodDB is Ownable {
         return classId;
     }
 
+    function getTagClass(bytes20 classId)
+        external
+        view
+        override
+        returns (TagClass memory)
+    {
+        return driver.getTagClass(classId, uint8(Version));
+    }
+
+    function getTagClassInfo(bytes20 classId)
+        external
+        view
+        override
+        returns (TagClassInfo memory)
+    {
+        return driver.getTagClassInfo(classId, uint8(Version));
+    }
+
+    function getTagById(bytes20 tagId)
+        external
+        view
+        override
+        returns (Tag memory tag, bool valid)
+    {
+        tag = _getTag(tagId);
+        if (tag.ClassId == bytes20(0)) {
+            return (tag, valid);
+        }
+        TagClass memory tagClass = this.getTagClass(tag.ClassId);
+        valid =
+            tagClass.ExpiredTime == 0 ||
+            (uint64(block.number) - tag.UpdateAt) <= tagClass.ExpiredTime;
+        return (tag, valid);
+    }
+
+    function getTagByObject(bytes20 tagClassId, TagObject calldata object)
+        external
+        view
+        override
+        returns (Tag memory tag, bool valid)
+    {
+        bytes20 tagId = genTagId(tagClassId, object, false);
+        (tag, valid) = this.getTagById(tagId);
+        if (valid) {
+            return (tag, valid);
+        }
+        if (object.TokenId == uint256(0)) {
+            //non-nft
+            return (tag, valid);
+        }
+        TagClass memory tagClass = this.getTagClass(tagClassId);
+        if (!TagFlags.hasInheritFlag(tagClass.Flags)) {
+            return (tag, valid);
+        }
+        //check whether inherit from contact
+        TagObject memory contractObj;
+        contractObj.Address = object.Address;
+        tagId = genTagId(tagClassId, contractObj, false);
+        return this.getTagById(tagId);
+    }
+
+    function hasTag(bytes20 tagClassId, TagObject calldata object)
+        external
+        view
+        override
+        returns (bool valid)
+    {
+        (, valid) = this.getTagByObject(tagClassId, object);
+        return valid;
+    }
+
+    function checkTagClassUpdateAuth(TagClass memory tagClass)
+        internal
+        view
+        returns (bool)
+    {
+        if (tagClass.Owner == msg.sender) {
+            return true;
+        }
+        //check agent of owner permission
+        if (tagClass.Agent.Agent == bytes20(0)) {
+            //no agent
+            return false;
+        }
+        if (tagClass.Agent.Type == AgentType.Address) {
+            return tagClass.Agent.Agent == bytes20(msg.sender);
+        }
+        TagObject memory object = TagObject(msg.sender, uint256(0));
+        return this.hasTag(tagClass.Agent.Agent, object);
+    }
+
+    function checkTagIssuerAuth(TagClass memory tagClass)
+        internal
+        view
+        returns (bool)
+    {
+        if (TagFlags.hasPublicFlag(tagClass.Flags)) {
+            return true;
+        }
+        return checkTagClassUpdateAuth(tagClass);
+    }
+
+    function checkTagUpdateAuth(TagClass memory tagClass, address tagIssuer)
+        internal
+        view
+        returns (bool)
+    {
+        if (TagFlags.hasPublicFlag(tagClass.Flags)) {
+            return tagIssuer == msg.sender;
+        }
+        return checkTagClassUpdateAuth(tagClass);
+    }
+
     function updateTagClass(
         bytes20 classId,
         string calldata tagName,
         string calldata desc,
         uint8 flags,
         uint32 expiredTime,
-        Common.TagAgent calldata agent
-    ) external {
-        ITag tagC = ITag(tagContract);
-        tagC.updateTagClass(
-            msg.sender,
-            classId,
-            tagName,
-            desc,
-            flags,
-            expiredTime,
-            agent
-        );
+        TagAgent calldata agent
+    ) external override {
+        TagClass memory tagClass = this.getTagClass(classId);
+        require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
+
+        if (agent.Agent != bytes20(0)) {
+            require(
+                tagClass.Owner == msg.sender,
+                "PODDB: only owner can update tag class agent"
+            );
+        } else {
+            require(
+                checkTagClassUpdateAuth(tagClass),
+                "PODDB: invalid tag class update auth"
+            );
+        }
+
+        tagClass.Flags = flags;
+        tagClass.Agent = agent;
+        tagClass.ExpiredTime = expiredTime;
+
+        TagClassInfo memory classInfo = this.getTagClassInfo(classId);
+        classInfo.TagName = tagName;
+        classInfo.Desc = desc;
+
+        _setTagClassAll(tagClass, classInfo);
+
         emit UpdateTagClass(classId, tagName, desc, flags, agent);
     }
 
     function newTag(
         bytes20 tagClassId,
-        Common.TagObject calldata object,
+        TagObject calldata object,
         bytes calldata data
-    ) external returns (bytes20 tagId) {
-        ITag tagC = ITag(tagContract);
-        tagId = tagC.newTag(msg.sender, tagClassId, object, data);
+    ) external override returns (bytes20) {
+        TagClass memory tagClass = this.getTagClass(tagClassId);
+        require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
+
+        require(
+            checkTagIssuerAuth(tagClass),
+            "PODDB: invalid tagClass issuer auth"
+        );
+
+        TagFieldType[] memory fieldTypes = getFieldTypes(tagClass.Fields);
+        Validator.validateTagData(data, fieldTypes);
+
+        bytes20 tagId = genTagId(
+            tagClassId,
+            object,
+            TagFlags.hasMultiIssueFlag(tagClass.Flags)
+        );
+
+        require(!_hasTag(tagId), "PODDB: tagId has already exist");
+
+        Tag memory tag = Tag(
+            tagId,
+            uint8(Version),
+            tagClassId,
+            msg.sender,
+            data,
+            uint32(block.number)
+        );
+
+        _setTag(tag);
+
         emit NewTag(object, tagClassId, tagId, msg.sender, data);
         return tagId;
     }
 
     function newTagBatch(
         bytes20 tagClassId,
-        Common.TagObject[] calldata objects,
+        TagObject[] calldata objects,
         bytes[] calldata datas
-    ) external returns (bytes20[] memory tagIds) {
-        ITag tagC = ITag(tagContract);
-        tagIds = tagC.newTagBatch(msg.sender, tagClassId, objects, datas);
-        for (uint256 i = 0; i < tagIds.length; i++) {
-            emit NewTag(
-                objects[i],
-                tagClassId,
-                tagIds[i],
-                msg.sender,
-                datas[i]
-            );
+    ) external override returns (bytes20[] memory) {
+        require(
+            objects.length == datas.length,
+            "PODDB: objects length not equal with datas"
+        );
+
+        TagClass memory tagClass = this.getTagClass(tagClassId);
+        require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
+        require(
+            checkTagIssuerAuth(tagClass),
+            "PODDB: invalid tagClass issuer auth"
+        );
+
+        TagFieldType[] memory fieldTypes = getFieldTypes(tagClass.Fields);
+        bool canMultiIssue = TagFlags.hasMultiIssueFlag(tagClass.Flags);
+
+        bytes20[] memory tagIds = new bytes20[](objects.length);
+        for (uint256 i = 0; i < objects.length; i++) {
+            bytes20 tagId = genTagId(tagClassId, objects[i], canMultiIssue);
+            _newTagBatch(tagClassId, tagId, fieldTypes, objects[i], datas[i]);
+            tagIds[i] = tagId;
         }
         return tagIds;
     }
 
-    function updateTag(bytes20 tagId, bytes calldata data) external {
-        ITag tagC = ITag(tagContract);
-        tagC.updateTag(msg.sender, tagId, data);
+    function _newTagBatch(
+        bytes20 classId,
+        bytes20 tagId,
+        TagFieldType[] memory fieldTypes,
+        TagObject calldata object,
+        bytes calldata data
+    ) internal {
+        require(!_hasTag(tagId), "PODDB: tagId has already exist");
+
+        Validator.validateTagData(data, fieldTypes);
+
+        Tag memory tag = Tag(
+            tagId,
+            uint8(Version),
+            classId,
+            msg.sender,
+            data,
+            uint32(block.number)
+        );
+        _setTag(tag);
+
+        emit NewTag(object, classId, tagId, msg.sender, data);
+    }
+
+    function updateTag(bytes20 tagId, bytes calldata data) external override {
+        Tag memory tag = _getTag(tagId);
+        require(tag.ClassId != bytes20(0), "PODDB: invalid tagId");
+
+        TagClass memory tagClass = this.getTagClass(tag.ClassId);
+        require(
+            tagClass.Owner != address(0),
+            "PODDB: invalid tagClassId of tag"
+        );
+        require(
+            checkTagUpdateAuth(tagClass, tag.Issuer),
+            "PODDB: invalid tag update auth"
+        );
+
+        TagFieldType[] memory fieldTypes = getFieldTypes(tagClass.Fields);
+        Validator.validateTagData(data, fieldTypes);
+
+        tag.Data = data;
+        tag.UpdateAt = uint32(block.number);
+
+        _setTag(tag);
+
         emit UpdateTag(tagId, data);
     }
 
-    function deleteTag(bytes20 tagId) external {
-        ITag tagC = ITag(tagContract);
-        tagC.deleteTag(msg.sender, tagId);
+    function deleteTag(bytes20 tagId) external override {
+        Tag memory tag = _getTag(tagId);
+        require(tag.ClassId != bytes20(0), "PODDB: invalid tagId");
+
+        TagClass memory tagClass = this.getTagClass(tag.ClassId);
+        require(tagClass.Owner != address(0), "PODDB: invalid classId of tag");
+        require(
+            checkTagUpdateAuth(tagClass, tag.Issuer),
+            "PODDB: invalid tag delete auth"
+        );
+
+        _deleteTag(tagId);
+
         emit DeleteTag(tagId);
     }
 
-    function getTagClass(bytes20 tagClassId)
-        external
-        view
-        returns (Common.TagClass memory tagClass)
-    {
-        ITag tagC = ITag(tagContract);
-        return tagC.getTagClass(tagClassId);
+    function genTagClassId() internal view returns (bytes20 id) {
+        WriteBuffer.buffer memory wBuf;
+        wBuf.init(52).writeAddress(msg.sender).writeUint(block.number);
+        return bytes20(keccak256(wBuf.getBytes()));
     }
 
-    function getTagClassInfo(bytes20 tagClassId)
-        external
-        view
-        returns (Common.TagClassInfo memory classInfo)
-    {
-        ITag tagC = ITag(tagContract);
-        return tagC.getTagClassInfo(tagClassId);
+    function genTagId(
+        bytes20 classId,
+        IPodDB.TagObject memory object,
+        bool multiIssue
+    ) internal view returns (bytes20 id) {
+        WriteBuffer.buffer memory wBuf;
+        wBuf.init(128).writeBytes20(classId).writeAddress(object.Address);
+        if (object.TokenId != uint256(0)) {
+            wBuf.writeUint(object.TokenId);
+        }
+        if (multiIssue) {
+            wBuf.writeUint(block.number);
+        }
+        return bytes20(keccak256(wBuf.getBytes()));
     }
 
-    function getTagById(bytes20 tagId)
-        external
-        view
-        returns (Common.Tag memory tag, bool valid)
-    {
-        ITag tagC = ITag(tagContract);
-        return tagC.getTag(tagId);
+    function _setTag(Tag memory tag) internal {
+        driver.setTag(tag);
     }
 
-    function getTag(bytes20 tagClassId, Common.TagObject calldata object)
-        external
-        view
-        returns (Common.Tag memory tag, bool valid)
-    {
-        ITag tagC = ITag(tagContract);
-        return tagC.getTag(tagClassId, object);
+    function _setTagClassAll(
+        TagClass memory tagClass,
+        TagClassInfo memory classInfo
+    ) internal {
+        driver.setTagClassAll(tagClass, classInfo);
     }
 
-    function hasTag(bytes20 tagClassId, Common.TagObject calldata object)
-        external
-        view
-        returns (bool valid)
+    function _getTag(bytes20 tagId) internal view returns (Tag memory tag) {
+        return driver.getTag(tagId, uint8(Version));
+    }
+
+    function _hasTag(bytes20 tagId) internal view returns (bool) {
+        return driver.hasTag(tagId);
+    }
+
+    function _hasTagClass(bytes20 classId) internal view returns (bool) {
+        return driver.hasTagClass(classId);
+    }
+
+    function _hasTagClassInfo(bytes20 classId) internal view returns (bool) {
+        return driver.hasTagClassInfo(classId);
+    }
+
+    function _deleteTag(bytes20 tagId) internal {
+        driver.deleteTag(tagId);
+    }
+
+    function getFieldTypes(bytes memory fieldTypes)
+        internal
+        pure
+        returns (TagFieldType[] memory)
     {
-        ITag tagC = ITag(tagContract);
-        return tagC.hasTag(tagClassId, object);
+        ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(fieldTypes);
+        uint256 len = rBuf.readUint8();
+        TagFieldType[] memory types = new TagFieldType[](len);
+        for (uint256 i = 0; i < len; i++) {
+            require(rBuf.skipString() > 0, "field name cannot empty");
+            types[i] = TagFieldType(rBuf.readUint8());
+        }
+        require(rBuf.left() == 0, "invalid fieldTypes");
+        return types;
     }
 }

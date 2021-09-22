@@ -15,7 +15,7 @@ import { WriteBuffer } from "./WriteBuffer";
 import { ReadBuffer } from "./ReadBuffer";
 
 const storageAddress = "0xdb54fa574a3e8c6aC784e1a5cdB575A737622CFf";
-const podDBAddress = "0x25C0a2F0A077F537Bd11897F04946794c2f6f1Ef";
+const podDBAddress = "0xa31F4c0eF2935Af25370D9AE275169CCd9793DA3";
 
 const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
 const wallet = new ethers.Wallet(
@@ -163,21 +163,21 @@ async function testDTag(): Promise<void> {
 
 async function main(): Promise<void> {
   // const tagSchemaId = await newTagClass();
-  // console.log("tagSchemaId:",tagSchemaId);
-  const tagSchemaId = "0xa59bafc1d2979b2b705ad9de6dcc7d47a8512f83";
-  // await newTag(tagSchemaId);
+  // console.log("tagSchemaId:", tagSchemaId);
+  const tagSchemaId = "0xabe06f0c85493f5d52689d4a15b1bc03b473d661";
+  await newTag(tagSchemaId);
   // await deleteTag("0x905671c1970fae55420150a64282f01db6461b89");
   // await testDTag();
   // await getTagClass(tagSchemaId);
   // await getTagById("0xfc94672e4401de4bc0738873cdafbfb27d5283af");
-  await getTag(
-    tagSchemaId,
-    buildTagObject("0x666432Ccb747B2220875cE185f487Ed53677faC9", 1)
-  );
-  await hasTag(
-    tagSchemaId,
-    buildTagObject("0x666432Ccb747B2220875cE185f487Ed53677faC9", 1)
-  );
+  // await getTag(
+  //   tagSchemaId,
+  //   buildTagObject("0x666432Ccb747B2220875cE185f487Ed53677faC9", 1)
+  // );
+  // await hasTag(
+  //   tagSchemaId,
+  //   buildTagObject("0x666432Ccb747B2220875cE185f487Ed53677faC9", 1)
+  // );
   // await testStorage();
   //   const tagFields = new TagSchemaFieldBuilder()
   //       .put("name", TagFieldType.String)

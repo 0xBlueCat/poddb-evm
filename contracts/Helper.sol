@@ -3,30 +3,11 @@ pragma solidity ^0.8.4;
 
 import "./WriteBuffer.sol";
 import "./ReadBuffer.sol";
-import "./Common.sol";
+import "./IPodDB.sol";
 
 library Helper {
     using WriteBuffer for *;
     using ReadBuffer for *;
-    using Common for *;
-
-    function buildFlags(
-        bool multiIssue,
-        bool canInherit,
-        bool isPublic
-    ) internal pure returns (uint8) {
-        uint8 flags = 0;
-        if (multiIssue) {
-            flags |= 1;
-        }
-        if (canInherit) {
-            flags |= 2;
-        }
-        if (isPublic) {
-            flags |= 4;
-        }
-        return flags;
-    }
 
     struct TagClassFieldBuilder {
         WriteBuffer.buffer _buf;
@@ -45,7 +26,7 @@ library Helper {
     function put(
         TagClassFieldBuilder memory builder,
         string memory fieldName,
-        Common.TagFieldType fieldType
+        IPodDB.TagFieldType fieldType
     ) internal pure returns (TagClassFieldBuilder memory) {
         builder._buf.writeString(fieldName).writeUint8(uint8(fieldType));
         builder._count++;

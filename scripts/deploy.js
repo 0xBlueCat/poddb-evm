@@ -7,7 +7,7 @@
 // import storage from "../artifacts/contracts/Storage.sol/Storage.json";
 const ethers = require("ethers");
 const storage = require("../artifacts/contracts/Storage.sol/Storage.json")
-const dTag = require("../artifacts/contracts/DTag.sol/DTag.json")
+const driver = require("../artifacts/contracts/Driver.sol/Driver.json")
 const hre = require("hardhat");
 async function main() {
   // Hardhat always runs the compile task when running scripts with its command
@@ -22,31 +22,26 @@ async function main() {
     await storage.deployed();
     console.log("storageContact deployed to:", storage.address);
 
-    // const commonContact  = await hre.ethers.getContractFactory("Common");
-    // const common = await commonContact.deploy();
-    // await common.deployed();
-    // console.log("commonContact deployed to:", common.address);
+    const validatorContract = await hre.ethers.getContractFactory("Validator");
+    const validator = await validatorContract.deploy();
+    await validator.deployed();
+    console.log("validator deployed to:", validator.address);
 
-    const utilsContract = await hre.ethers.getContractFactory("Utils");
-    const utils = await utilsContract.deploy();
-    await utils.deployed();
-    console.log("utils deployed to:", utils.address);
+    const driverContract = await hre.ethers.getContractFactory("Driver");
+    const driver = await driverContract.deploy(storage.address);
+    await driver.deployed();
+    console.log("driver deployed to:", driver.address);
+    await setStorageAccessor(storage.address, driver.address);
 
-    const dTagContract = await hre.ethers.getContractFactory("DTag", {
+   const podDBContract = await hre.ethers.getContractFactory("PodDB",{
         libraries:{
-            Utils:utils.address
+            Validator:validator.address
         }
     });
-    const dTag = await dTagContract.deploy(storage.address);
-    await dTag.deployed();
-    console.log("dTag deployed to:", dTag.address);
-    await setStorageAccessor(storage.address, dTag.address);
-
-   const podDBContract = await hre.ethers.getContractFactory("PodDB");
-   const podDB = await podDBContract.deploy(dTag.address);
-    await podDB.deployed();
+   const podDB = await podDBContract.deploy(driver.address);
+   await podDB.deployed();
    console.log("poddb deployed to:", podDB.address);
-   await changeOwner(dTag.address, podDB.address);
+   await changeOwner(driver.address, podDB.address);
 }
 
 const provider = new ethers.providers.JsonRpcProvider(
@@ -71,17 +66,20 @@ async function setStorageAccessor(storageAddress, dTagAddress){
     console.log("ParsedLogs:", JSON.stringify(parseLogs, undefined, 2));
 }
 
-async function changeOwner(dTagAddress, owner){
-    const contact = new ethers.Contract(dTagAddress, dTag.abi, provider).connect(
+async function changeOwner(driverAddress, owner){
+    const contact = new ethers.Contract(driverAddress, driver.abi, provider).connect(
         wallet
     );
-    const iface = new ethers.utils.Interface(dTag.abi);
+    const iface = new ethers.utils.Interface(driver.abi);
     const tx = await contact.transferOwnership(owner);
     await tx.wait();
 
     const rcp = await provider.getTransactionReceipt(tx.hash);
     const parseLogs = await iface.parseLog(rcp.logs[0]);
     console.log("ParsedLogs:", JSON.stringify(parseLogs, undefined, 2));
+
+    const curOwner = await contact.owner();
+    console.log("Driver owner:", curOwner);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
