@@ -139,11 +139,15 @@ contract PodDB is Ownable, IPodDB {
         return valid;
     }
 
-    function checkTagClassUpdateAuth(TagClass memory tagClass)
+    function checkTagIssuerAuth(TagClass memory tagClass)
         internal
         view
         returns (bool)
     {
+        if (TagFlags.hasPublicFlag(tagClass.Flags)) {
+            return true;
+        }
+
         if (tagClass.Owner == msg.sender) {
             return true;
         }
@@ -159,17 +163,6 @@ contract PodDB is Ownable, IPodDB {
         return this.hasTag(tagClass.Agent.Agent, object);
     }
 
-    function checkTagIssuerAuth(TagClass memory tagClass)
-        internal
-        view
-        returns (bool)
-    {
-        if (TagFlags.hasPublicFlag(tagClass.Flags)) {
-            return true;
-        }
-        return checkTagClassUpdateAuth(tagClass);
-    }
-
     function checkTagUpdateAuth(TagClass memory tagClass, address tagIssuer)
         internal
         view
@@ -178,43 +171,49 @@ contract PodDB is Ownable, IPodDB {
         if (TagFlags.hasPublicFlag(tagClass.Flags)) {
             return tagIssuer == msg.sender;
         }
-        return checkTagClassUpdateAuth(tagClass);
+        return checkTagIssuerAuth(tagClass);
     }
 
     function updateTagClass(
         bytes20 classId,
-        string calldata tagName,
-        string calldata desc,
+        address newOwner,
         uint8 flags,
         uint32 expiredTime,
-        TagAgent calldata agent
+        TagAgent calldata newAgent
     ) external override {
         TagClass memory tagClass = this.getTagClass(classId);
-        require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
+        require(
+            tagClass.Owner == msg.sender,
+            "PODDB: only owner can update tagClass"
+        );
+        require(newOwner != address(0), "PODDB: owner cannot be zero address");
 
-        if (agent.Agent != bytes20(0)) {
-            require(
-                tagClass.Owner == msg.sender,
-                "PODDB: only owner can update tag class agent"
-            );
-        } else {
-            require(
-                checkTagClassUpdateAuth(tagClass),
-                "PODDB: invalid tag class update auth"
-            );
-        }
-
+        tagClass.Owner = newOwner;
         tagClass.Flags = flags;
-        tagClass.Agent = agent;
         tagClass.ExpiredTime = expiredTime;
+        tagClass.Agent = newAgent;
+        driver.setTagClass(tagClass);
+
+        emit UpdateTagClass(classId, newOwner, flags, expiredTime, newAgent);
+    }
+
+    function updateTagClassInfo(
+        bytes20 classId,
+        string calldata tagName,
+        string calldata desc
+    ) external override {
+        TagClass memory tagClass = this.getTagClass(classId);
+        require(
+            tagClass.Owner == msg.sender,
+            "PODDB: only owner can update tagClassInfo"
+        );
 
         TagClassInfo memory classInfo = this.getTagClassInfo(classId);
         classInfo.TagName = tagName;
         classInfo.Desc = desc;
+        driver.setTagClassInfo(classInfo);
 
-        _setTagClassAll(tagClass, classInfo);
-
-        emit UpdateTagClass(classId, tagName, desc, flags, agent);
+        emit UpdateTagClassInfo(classId, tagName, desc);
     }
 
     function newTag(
@@ -224,7 +223,6 @@ contract PodDB is Ownable, IPodDB {
     ) external override returns (bytes20) {
         TagClass memory tagClass = this.getTagClass(tagClassId);
         require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
-
         require(
             checkTagIssuerAuth(tagClass),
             "PODDB: invalid tagClass issuer auth"
@@ -375,6 +373,14 @@ contract PodDB is Ownable, IPodDB {
     function _setTag(Tag memory tag) internal {
         driver.setTag(tag);
     }
+
+//    function _setTagClass(TagClass memory tagClass) internal {
+//        driver.setTagClass(tagClass);
+//    }
+//
+//    function _setTagClassInfo(TagClassInfo memory classInfo) internal {
+//        driver.setTagClassInfo(classInfo);
+//    }
 
     function _setTagClassAll(
         TagClass memory tagClass,
