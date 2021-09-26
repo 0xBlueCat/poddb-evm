@@ -368,4 +368,8 @@ library WriteBuffer {
     function getBytes(buffer memory buf) internal pure returns (bytes memory) {
         return buf.buf;
     }
+
+    function length(buffer memory buf) internal pure returns (uint){
+        return buf.buf.length;
+    }
 }
