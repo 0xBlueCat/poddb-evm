@@ -127,12 +127,11 @@ library Serialization {
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 47 + tag.Data.length;
+        uint256 count = 25 + tag.Data.length;
         wBuf.init(count);
         wBuf
             .writeUint8(tag.Version)
             .writeBytes20(tag.ClassId)
-            .writeAddress(tag.Issuer)
             .writeBytes(tag.Data)
             .writeUint32(tag.UpdateAt);
         return wBuf.getBytes();
@@ -151,7 +150,6 @@ library Serialization {
         require(tag.Version <= version, "DESERIALIZE: incompatible version");
 
         tag.ClassId = buf.readBytes20();
-        tag.Issuer = buf.readAddress();
         tag.Data = buf.readBytes();
         tag.UpdateAt = buf.readUint32();
         return tag;

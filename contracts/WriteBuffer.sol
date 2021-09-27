@@ -369,7 +369,7 @@ library WriteBuffer {
         return buf.buf;
     }
 
-    function length(buffer memory buf) internal pure returns (uint){
+    function length(buffer memory buf) internal pure returns (uint256) {
         return buf.buf.length;
     }
 }

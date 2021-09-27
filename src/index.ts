@@ -7,21 +7,29 @@ import {
   buildTagObject,
   NoTagAgent,
   TagAgentBuilder,
-  TagFieldType,
   TagClassFieldBuilder,
+  TagFieldType,
   TagObject,
 } from "./PodDB";
 import { WriteBuffer } from "./WriteBuffer";
-import { ReadBuffer } from "./ReadBuffer";
 
 const storageAddress = "0xdb54fa574a3e8c6aC784e1a5cdB575A737622CFf";
-const podDBAddress = "0xa31F4c0eF2935Af25370D9AE275169CCd9793DA3";
+const podDBAddress = "0xDC0a0B1Cd093d321bD1044B5e0Acb71b525ABb6b";
 
 const provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
 const wallet = new ethers.Wallet(
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
   provider
 );
+// const provider = new ethers.providers.JsonRpcProvider(
+//   process.env.RINKEBY_URL || "http://127.0.0.1:8545"
+// );
+// const wallet = new ethers.Wallet(
+//   process.env.PRIVATE_KEY ||
+//     "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+//   provider
+// );
+
 const contact = new ethers.Contract(podDBAddress, podDB.abi, provider).connect(
   wallet
 );
@@ -54,9 +62,93 @@ async function newTagClass(): Promise<string> {
   return parseLogs.args[0];
 }
 
-async function getTagClass(tagClassId: string): Promise<void> {
-  const tx = await contact.getTagClass(tagClassId);
-  console.log("TagClass:", JSON.stringify(tx, undefined, 2));
+async function newDeMetaLootTag(): Promise<void> {
+  //new profileTagClass
+  let tagFields = new TagClassFieldBuilder()
+    .put("profile", TagFieldType.String)
+    .build();
+  let tx = await contact.newTagClass(
+    "DeMetaProfile",
+    tagFields,
+    "Profile of DeMetaLoot",
+    0,
+    0,
+    NoTagAgent
+  );
+  await tx.wait();
+  let rcp = await provider.getTransactionReceipt(tx.hash);
+  let parseLogs = await iface.parseLog(rcp.logs[0]);
+  console.log("ParsedLogs:", JSON.stringify(parseLogs.args, undefined, 2));
+
+  //new textTagClass
+  tagFields = new TagClassFieldBuilder()
+    .put("count", TagFieldType.Uint8)
+    .put("texts", TagFieldType.Bytes)
+    .build();
+  tx = await contact.newTagClass(
+    "DeMetaTexts",
+    tagFields,
+    "Texts of DeMeteLoot",
+    0,
+    0,
+    new TagAgentBuilder(
+      AgentType.Address,
+      "0xfc073209b7936A771F77F63D42019a3a93311869"
+    ).build()
+  );
+  await tx.wait();
+  rcp = await provider.getTransactionReceipt(tx.hash);
+  parseLogs = await iface.parseLog(rcp.logs[0]);
+  console.log("ParsedLogs:", JSON.stringify(parseLogs.args, undefined, 2));
+
+  //new tokenURI tagClass
+  tagFields = new TagClassFieldBuilder()
+    .put("profile", TagFieldType.String)
+    .build();
+  tx = await contact.newTagClass(
+    "DeMetaTokenURI",
+    tagFields,
+    "TokenURL of DeMeteLoot",
+    0,
+    0,
+    NoTagAgent
+  );
+  await tx.wait();
+  rcp = await provider.getTransactionReceipt(tx.hash);
+  parseLogs = await iface.parseLog(rcp.logs[0]);
+  console.log("ParsedLogs:", JSON.stringify(parseLogs.args, undefined, 2));
+}
+
+async function updateTagClass(tagClassId: string) {
+  const tagClass = await contact.getTagClass(tagClassId);
+  const tagClassInfo = await contact.getTagClassInfo(tagClassId);
+  console.log("TagClass:", JSON.stringify(tagClass, undefined, 2));
+  console.log("TagClassInfo:", JSON.stringify(tagClassInfo, undefined, 2));
+
+  const tx = await contact.updateTagClass(
+    tagClassId,
+    tagClass[2],
+    0,
+    0,
+    new TagAgentBuilder(
+      AgentType.Address,
+      "0xfc073209b7936A771F77F63D42019a3a93311869"
+    ).build()
+  );
+  await tx.wait();
+  const rcp = await provider.getTransactionReceipt(tx.hash);
+  console.log("Receipt:", JSON.stringify(rcp, undefined, 2));
+  const parseLogs = await iface.parseLog(rcp.logs[0]);
+  console.log("ParsedLogs:", JSON.stringify(parseLogs.args, undefined, 2));
+
+  return parseLogs.args[0];
+}
+
+async function getTagClass(tagClassId: string) {
+  const tagClass = await contact.getTagClass(tagClassId);
+  const tagClassInfo = await contact.getTagClassInfo(tagClassId);
+  console.log("TagClass:", JSON.stringify(tagClass, undefined, 2));
+  console.log("TagClassInfo:", JSON.stringify(tagClassInfo, undefined, 2));
 }
 
 async function getTagById(tagId: string): Promise<void> {
@@ -74,7 +166,7 @@ async function hasTag(tagClassId: string, tagObject: [string, string]) {
   console.log("HasTag:", JSON.stringify(tx, undefined, 2));
 }
 
-async function newTag(tagClassId: string) {
+async function setTag(tagClassId: string) {
   const texts = new WriteBuffer()
     .writeBytes(ethers.utils.toUtf8Bytes("Warhammer"))
     .writeBytes(ethers.utils.toUtf8Bytes("Divine Robe"))
@@ -85,9 +177,9 @@ async function newTag(tagClassId: string) {
     .getBytes();
 
   const data = new WriteBuffer().writeUint8(6).writeBytes(texts).getBytes();
-  const dTagTx = await contact.newTag(
+  const dTagTx = await contact.setTag(
     tagClassId,
-    buildTagObject("0x666432Ccb747B2220875cE185f487Ed53677faC9", 1),
+    buildTagObject("0x1848875EBafcB36662A674b58b2474874BD823d2", 2),
     data
   );
   // console.log("dTagTx:", JSON.stringify(dTagTx, undefined, 2));
@@ -162,10 +254,12 @@ async function testDTag(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  // const tagSchemaId = await newTagClass();
-  // console.log("tagSchemaId:", tagSchemaId);
-  const tagSchemaId = "0xabe06f0c85493f5d52689d4a15b1bc03b473d661";
-  await newTag(tagSchemaId);
+  const tagSchemaId = await newTagClass();
+  console.log("tagSchemaId:", tagSchemaId);
+  // await newDeMetaLootTag();
+  // const tagSchemaId = "0xbb7bb6518584b668031ef3cf0391954b0ef96b83";
+  await setTag(tagSchemaId);
+  // await updateTagClass(tagSchemaId);
   // await deleteTag("0x905671c1970fae55420150a64282f01db6461b89");
   // await testDTag();
   // await getTagClass(tagSchemaId);

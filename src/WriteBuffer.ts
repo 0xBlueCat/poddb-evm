@@ -129,28 +129,6 @@ export class WriteBuffer {
     return this;
   }
 
-  //
-  // writeInt8(dataInt8){
-  //     this.writeVarUint(dataInt8,1);
-  // }
-  //
-  // writeInt16(dataInt16){
-  //     this.writeVarUint(dataInt16, 2);
-  // }
-  //
-  // writeInt32(dataInt32){
-  //     this.writeVarUint(dataInt32, 4);
-  // }
-  //
-  // writeInt64(dataInt64){
-  //     this.writeVarUint(dataInt64, 8);
-  // }
-  //
-  // writeInt(dataInt){
-  //     this.writeVarUint(dataInt, 32);
-  // }
-  //
-
   writeAddress(addressHexString: string | ethers.BytesLike): WriteBuffer {
     this.writeBytes20(addressHexString);
     return this;

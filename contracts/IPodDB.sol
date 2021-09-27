@@ -33,7 +33,6 @@ interface IPodDB {
         bytes Fields; // format Number fieldName_1 fieldType fieldName_2 fieldType fieldName_n fieldType
         // 1:multiIssue flag, means one object have more one tag of this class
         // 2:inherit flag, means when a contract have a tag, all of nft mint by this contact will inherit this tag automatic
-        // 4:public flag, means not only the owner of tag class can issuer the tag, other also can issue the tag
         uint8 Flags;
         uint32 ExpiredTime; //expired time(block number) of tag, until tag update, 0 mean tag won't expiration.
         TagAgent Agent;
@@ -51,7 +50,6 @@ interface IPodDB {
         bytes20 TagId;
         uint8 Version;
         bytes20 ClassId;
-        address Issuer;
         bytes Data;
         uint32 UpdateAt;
     }
@@ -93,13 +91,7 @@ interface IPodDB {
 
     event UpdateTagClassInfo(bytes20 indexed classId, string name, string desc);
 
-    event NewTag(
-        TagObject object,
-        bytes20 tagClassId,
-        bytes20 id,
-        address issuer,
-        bytes data
-    );
+    event SetTag(bytes20 id, TagObject object, bytes20 tagClassId, bytes data);
 
     event UpdateTag(bytes20 id, bytes data);
 
@@ -128,19 +120,17 @@ interface IPodDB {
         string calldata desc
     ) external;
 
-    function newTag(
+    function setTag(
         bytes20 tagClassId,
         TagObject calldata object,
         bytes calldata data
     ) external returns (bytes20);
 
-    function newTagBatch(
+    function setTagBatch(
         bytes20 tagClassId,
         TagObject[] calldata objects,
         bytes[] calldata datas
     ) external returns (bytes20[] memory);
-
-    function updateTag(bytes20 tagId, bytes calldata data) external;
 
     function deleteTag(bytes20 tagId) external;
 

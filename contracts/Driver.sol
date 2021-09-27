@@ -7,12 +7,10 @@ import "./librarys/Ownable.sol";
 import "./WriteBuffer.sol";
 import "./IDriver.sol";
 import "./ReadBuffer.sol";
-import "./Validator.sol";
 
 contract Driver is Ownable, IDriver {
     using WriteBuffer for *;
     using ReadBuffer for *;
-    using Validator for *;
 
     IStorage private storageContact;
 
@@ -25,7 +23,6 @@ contract Driver is Ownable, IDriver {
         override
         onlyOwner
     {
-        Validator.validateTagClassFields(tagClass.Fields);
         bytes memory data = Serialization.serializeTagClass(tagClass);
         storageContact.set(tagClass.ClassId, data);
     }
@@ -44,7 +41,6 @@ contract Driver is Ownable, IDriver {
         IPodDB.TagClass calldata tagClass,
         IPodDB.TagClassInfo calldata tagClassInfo
     ) external override onlyOwner {
-        Validator.validateTagClassFields(tagClass.Fields);
         bytes memory data = Serialization.serializeTagClass(tagClass);
         storageContact.set(tagClass.ClassId, data);
 

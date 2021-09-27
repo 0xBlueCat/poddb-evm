@@ -21,6 +21,7 @@ async function main() {
     const storage = await storageContact.deploy();
     await storage.deployed();
     console.log("storageContact deployed to:", storage.address);
+// const storageAAddress = "0x5427d4E232b2520550889c19799cA4adF59076bA";
 
     const validatorContract = await hre.ethers.getContractFactory("Validator");
     const validator = await validatorContract.deploy();
@@ -51,7 +52,14 @@ const wallet = new ethers.Wallet(
     "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
     provider
 );
-
+// const provider = new ethers.providers.JsonRpcProvider(
+//   process.env.RINKEBY_URL || "http://127.0.0.1:8545"
+// );
+// const wallet = new ethers.Wallet(
+//   process.env.PRIVATE_KEY ||
+//     "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+//   provider
+// );
 async function setStorageAccessor(storageAddress, dTagAddress){
     const contact = new ethers.Contract(storageAddress, storage.abi, provider).connect(
         wallet
