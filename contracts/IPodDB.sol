@@ -91,9 +91,13 @@ interface IPodDB {
 
     event UpdateTagClassInfo(bytes20 indexed classId, string name, string desc);
 
-    event SetTag(bytes20 id, TagObject object, bytes20 tagClassId, bytes data);
-
-    event UpdateTag(bytes20 id, bytes data);
+    event SetTag(
+        bytes20 id,
+        TagObject object,
+        bytes20 tagClassId,
+        bytes data,
+        address issuer
+    );
 
     event DeleteTag(bytes20 id);
 

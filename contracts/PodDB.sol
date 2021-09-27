@@ -230,7 +230,7 @@ contract PodDB is Ownable, IPodDB {
 
         _setTag(tag);
 
-        emit SetTag(tagId, object, tagClassId, data);
+        emit SetTag(tagId, object, tagClassId, data, msg.sender);
         return tagId;
     }
 
@@ -278,7 +278,7 @@ contract PodDB is Ownable, IPodDB {
         );
         _setTag(tag);
 
-        emit SetTag(tagId, object, classId, data);
+        emit SetTag(tagId, object, classId, data, msg.sender);
     }
 
     function deleteTag(bytes20 tagId) external override {
