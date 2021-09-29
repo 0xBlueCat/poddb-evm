@@ -17,6 +17,7 @@ contract PodDB is Ownable, IPodDB {
 
     IDriver private driver;
 
+    uint256 nonce;
     uint256 public constant Version = 1;
 
     constructor(address _driver) Ownable() {
@@ -294,9 +295,13 @@ contract PodDB is Ownable, IPodDB {
         emit DeleteTag(tagId);
     }
 
-    function genTagClassId() internal view returns (bytes20 id) {
+    function genTagClassId() internal returns (bytes20 id) {
         WriteBuffer.buffer memory wBuf;
-        wBuf.init(52).writeAddress(msg.sender).writeUint(block.number);
+        wBuf
+            .init(84)
+            .writeAddress(msg.sender)
+            .writeBytes32(blockhash(block.number - 1))
+            .writeUint(++nonce);
         return bytes20(keccak256(wBuf.getBytes()));
     }
 
