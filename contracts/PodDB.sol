@@ -26,49 +26,55 @@ contract PodDB is Ownable, IPodDB {
 
     function newTagClass(
         string calldata tagName,
-        bytes calldata fields,
+        string calldata fieldNames,
+        bytes calldata fieldTypes,
         string calldata desc,
         uint8 flags,
         uint32 expiredTime,
         TagAgent calldata agent
     ) external override returns (bytes20) {
         require(bytes(tagName).length > 0, "PODDB: tagName cannot empty");
-
-        bytes20 classId = genTagClassId();
-        require(!_hasTagClass(classId), "PODDB: tagClassId has already exist");
-
-        Validator.validateTagClassFields(fields);
+        Validator.validateTagClassField(fieldNames, fieldTypes);
 
         TagClass memory tagClass = TagClass(
-            classId,
+            genTagClassId(),
             uint8(Version),
             msg.sender,
-            fields,
+            fieldTypes,
             flags,
             expiredTime,
             agent
         );
         TagClassInfo memory classInfo = TagClassInfo(
-            classId,
-            uint8(Version),
+            tagClass.ClassId,
+            tagClass.Version,
             tagName,
+            fieldNames,
             desc,
             uint32(block.number)
         );
 
-        _setTagClassAll(tagClass, classInfo);
+        _newTagClass(tagClass, classInfo);
+        return tagClass.ClassId;
+    }
+
+    function _newTagClass(
+        IPodDB.TagClass memory tagClass,
+        IPodDB.TagClassInfo memory tagClassInfo
+    ) internal {
+        _setTagClassAll(tagClass, tagClassInfo);
 
         emit NewTagClass(
-            classId,
-            tagName,
-            msg.sender,
-            fields,
-            desc,
-            flags,
-            expiredTime,
-            agent
+            tagClass.ClassId,
+            tagClassInfo.TagName,
+            tagClass.Owner,
+            tagClassInfo.FieldNames,
+            tagClass.FieldTypes,
+            tagClassInfo.Desc,
+            tagClass.Flags,
+            tagClass.ExpiredTime,
+            tagClass.Agent
         );
-        return classId;
     }
 
     function getTagClass(bytes20 classId)
@@ -212,8 +218,7 @@ contract PodDB is Ownable, IPodDB {
         require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
         require(checkTagAuth(tagClass), "PODDB: invalid tag issuer auth");
 
-        TagFieldType[] memory fieldTypes = getFieldTypes(tagClass.Fields);
-        Validator.validateTagData(data, fieldTypes);
+        Validator.validateTagData(data, tagClass.FieldTypes);
 
         bytes20 tagId = genTagId(
             tagClassId,
@@ -249,13 +254,18 @@ contract PodDB is Ownable, IPodDB {
         require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
         require(checkTagAuth(tagClass), "PODDB: invalid tagClass issuer auth");
 
-        TagFieldType[] memory fieldTypes = getFieldTypes(tagClass.Fields);
         bool canMultiIssue = TagFlags.hasMultiIssueFlag(tagClass.Flags);
 
         bytes20[] memory tagIds = new bytes20[](objects.length);
         for (uint256 i = 0; i < objects.length; i++) {
             bytes20 tagId = genTagId(tagClassId, objects[i], canMultiIssue);
-            _newTagBatch(tagClassId, tagId, fieldTypes, objects[i], datas[i]);
+            _newTagBatch(
+                tagClassId,
+                tagId,
+                tagClass.FieldTypes,
+                objects[i],
+                datas[i]
+            );
             tagIds[i] = tagId;
         }
         return tagIds;
@@ -264,7 +274,7 @@ contract PodDB is Ownable, IPodDB {
     function _newTagBatch(
         bytes20 classId,
         bytes20 tagId,
-        TagFieldType[] memory fieldTypes,
+        bytes memory fieldTypes,
         TagObject calldata object,
         bytes calldata data
     ) internal {
@@ -350,21 +360,5 @@ contract PodDB is Ownable, IPodDB {
 
     function _deleteTag(bytes20 tagId) internal {
         driver.deleteTag(tagId);
-    }
-
-    function getFieldTypes(bytes memory fieldTypes)
-        internal
-        pure
-        returns (TagFieldType[] memory)
-    {
-        ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(fieldTypes);
-        uint256 len = rBuf.readUint8();
-        TagFieldType[] memory types = new TagFieldType[](len);
-        for (uint256 i = 0; i < len; i++) {
-            require(rBuf.skipString() > 0, "field name cannot empty");
-            types[i] = TagFieldType(rBuf.readUint8());
-        }
-        require(rBuf.left() == 0, "invalid fieldTypes");
-        return types;
     }
 }

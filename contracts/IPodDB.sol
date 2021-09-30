@@ -23,14 +23,17 @@ interface IPodDB {
         Bytes32,
         Address,
         Bytes,
-        String
+        String,
+        //if a field is array, the must be followed by a filedType, and max elem of array is 65535
+        //note that array type doest not support nested array!
+        Array
     }
 
     struct TagClass {
         bytes20 ClassId;
         uint8 Version;
         address Owner; // user address or contract address
-        bytes Fields; // format Number fieldName_1 fieldType fieldName_2 fieldType fieldName_n fieldType
+        bytes FieldTypes; //field types
         // 1:multiIssue flag, means one object have more one tag of this class
         // 2:inherit flag, means when a contract have a tag, all of nft mint by this contact will inherit this tag automatic
         uint8 Flags;
@@ -42,6 +45,7 @@ interface IPodDB {
         bytes20 ClassId;
         uint8 Version;
         string TagName;
+        string FieldNames; //name of fields, separate with comma between fields. such as "field1,field2"
         string Desc;
         uint32 CreateAt;
     }
@@ -74,7 +78,8 @@ interface IPodDB {
         bytes20 classId,
         string name,
         address owner,
-        bytes fields,
+        string fieldNames,
+        bytes fieldTypes,
         string desc,
         uint8 flags,
         uint32 expiredTime,
@@ -103,7 +108,8 @@ interface IPodDB {
 
     function newTagClass(
         string calldata tagName,
-        bytes calldata fields,
+        string calldata fieldNames,
+        bytes calldata fieldTypes,
         string calldata desc,
         uint8 flags,
         uint32 expiredTime,

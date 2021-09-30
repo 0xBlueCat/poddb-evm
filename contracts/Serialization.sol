@@ -39,13 +39,12 @@ library Serialization {
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 50 + tagClass.Fields.length;
-
+        uint256 count = 48 + tagClass.FieldTypes.length;
         wBuf
             .init(count)
             .writeUint8(tagClass.Version)
             .writeAddress(tagClass.Owner)
-            .writeBytes(tagClass.Fields)
+            .writeBytes(tagClass.FieldTypes)
             .writeUint8(tagClass.Flags)
             .writeUint32(tagClass.ExpiredTime);
 
@@ -73,7 +72,7 @@ library Serialization {
         );
 
         tagClass.Owner = buf.readAddress();
-        tagClass.Fields = buf.readBytes();
+        tagClass.FieldTypes = buf.readBytes();
         tagClass.Flags = buf.readUint8();
         tagClass.ExpiredTime = buf.readUint32();
         if (buf.readBool()) {
@@ -90,11 +89,13 @@ library Serialization {
         WriteBuffer.buffer memory wBuf;
         uint256 count = 9 +
             bytes(classInfo.TagName).length +
+            bytes(classInfo.FieldNames).length +
             bytes(classInfo.Desc).length;
         wBuf
             .init(count)
             .writeUint8(classInfo.Version)
             .writeString(classInfo.TagName)
+            .writeString(classInfo.FieldNames)
             .writeString(classInfo.Desc)
             .writeUint32(classInfo.CreateAt);
         return wBuf.getBytes();
@@ -116,6 +117,7 @@ library Serialization {
         );
 
         classInfo.TagName = buf.readString();
+        classInfo.FieldNames = buf.readString();
         classInfo.Desc = buf.readString();
         classInfo.CreateAt = buf.readUint32();
         return classInfo;

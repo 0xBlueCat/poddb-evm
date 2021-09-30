@@ -23,6 +23,7 @@ export enum TagFieldType {
   Address,
   Bytes,
   String,
+  Array,
 }
 
 export enum AgentType {
@@ -65,26 +66,46 @@ export function buildTagObject(
 export interface TagClassField {
   fieldName: string;
   fieldType: TagFieldType;
+  isArray?: boolean;
 }
 
 export class TagClassFieldBuilder {
   private fields: TagClassField[];
+  private fieldNames: string;
+  private fieldTypes: string;
   public constructor() {
     this.fields = [] as TagClassField[];
   }
 
-  public put(fieldName: string, fieldType: TagFieldType): TagClassFieldBuilder {
-    this.fields.push({ fieldName, fieldType });
+  public put(
+    fieldName: string,
+    fieldType: TagFieldType,
+    isArray: boolean
+  ): TagClassFieldBuilder {
+    this.fields.push({ fieldName, fieldType, isArray });
     return this;
   }
 
-  public build(): string {
+  public build(): TagClassFieldBuilder {
     const buf: WriteBuffer = new WriteBuffer();
-    buf.writeUint8(this.fields.length);
+    const fieldNames = [] as string[];
     this.fields.forEach((field) => {
-      buf.writeString(field.fieldName);
+      fieldNames.push(field.fieldName);
+      if (field.isArray) {
+        buf.writeUint8(TagFieldType.Array);
+      }
       buf.writeUint8(field.fieldType);
     });
-    return buf.getBytes();
+    this.fieldNames = fieldNames.join(",");
+    this.fieldTypes = buf.getBytes();
+    return this;
+  }
+
+  public getFieldNames(): string {
+    return this.fieldNames;
+  }
+
+  public getFieldTypes(): string {
+    return this.fieldTypes;
   }
 }
