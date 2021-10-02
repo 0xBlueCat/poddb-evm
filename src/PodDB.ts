@@ -109,3 +109,11 @@ export class TagClassFieldBuilder {
     return this.fieldTypes;
   }
 }
+
+export interface Tag {
+  TagId: string;
+  Version: number;
+  ClassId: string;
+  Data: string;
+  UpdateAt: number;
+}
