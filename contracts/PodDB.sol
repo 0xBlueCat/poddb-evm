@@ -51,7 +51,7 @@ contract PodDB is Ownable, IPodDB {
             tagName,
             fieldNames,
             desc,
-            uint32(block.number)
+            uint32(block.timestamp)
         );
 
         _newTagClass(tagClass, classInfo);
@@ -108,7 +108,7 @@ contract PodDB is Ownable, IPodDB {
         TagClass memory tagClass = this.getTagClass(tag.ClassId);
         valid =
             tagClass.ExpiredTime == 0 ||
-            (uint64(block.number) - tag.UpdateAt) <= tagClass.ExpiredTime;
+            (uint32(block.timestamp) - tag.UpdateAt) <= tagClass.ExpiredTime;
         return (tag, valid);
     }
 
@@ -229,7 +229,7 @@ contract PodDB is Ownable, IPodDB {
                 uint8(Version),
                 tagClassId,
                 data,
-                uint32(block.number)
+                uint32(block.timestamp)
             );
 
             _setTag(tag);
@@ -281,13 +281,13 @@ contract PodDB is Ownable, IPodDB {
     ) internal {
         Validator.validateTagData(data, fieldTypes);
 
-        if(!multiTag){
+        if (!multiTag) {
             Tag memory tag = Tag(
                 tagId,
                 uint8(Version),
                 classId,
                 data,
-                uint32(block.number)
+                uint32(block.timestamp)
             );
             _setTag(tag);
         }
