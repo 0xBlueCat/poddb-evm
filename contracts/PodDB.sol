@@ -220,21 +220,20 @@ contract PodDB is Ownable, IPodDB {
 
         Validator.validateTagData(data, tagClass.FieldTypes);
 
-        bytes20 tagId = genTagId(
-            tagClassId,
-            object,
-            TagFlags.hasMultiIssueFlag(tagClass.Flags)
-        );
+        bool multiTag = TagFlags.hasMultiIssueFlag(tagClass.Flags);
+        bytes20 tagId = genTagId(tagClassId, object, multiTag);
 
-        Tag memory tag = Tag(
-            tagId,
-            uint8(Version),
-            tagClassId,
-            data,
-            uint32(block.number)
-        );
+        if (!multiTag) {
+            Tag memory tag = Tag(
+                tagId,
+                uint8(Version),
+                tagClassId,
+                data,
+                uint32(block.number)
+            );
 
-        _setTag(tag);
+            _setTag(tag);
+        }
 
         emit SetTag(tagId, object, tagClassId, data, msg.sender);
         return tagId;
@@ -263,6 +262,7 @@ contract PodDB is Ownable, IPodDB {
                 tagClassId,
                 tagId,
                 tagClass.FieldTypes,
+                canMultiIssue,
                 objects[i],
                 datas[i]
             );
@@ -275,19 +275,22 @@ contract PodDB is Ownable, IPodDB {
         bytes20 classId,
         bytes20 tagId,
         bytes memory fieldTypes,
+        bool multiTag,
         TagObject calldata object,
         bytes calldata data
     ) internal {
         Validator.validateTagData(data, fieldTypes);
 
-        Tag memory tag = Tag(
-            tagId,
-            uint8(Version),
-            classId,
-            data,
-            uint32(block.number)
-        );
-        _setTag(tag);
+        if(!multiTag){
+            Tag memory tag = Tag(
+                tagId,
+                uint8(Version),
+                classId,
+                data,
+                uint32(block.number)
+            );
+            _setTag(tag);
+        }
 
         emit SetTag(tagId, object, classId, data, msg.sender);
     }
