@@ -3,41 +3,57 @@ pragma solidity ^0.8.4;
 
 import "./WriteBuffer.sol";
 import "./ReadBuffer.sol";
-import "./IPodDB.sol";
+import "./interface/IPodDB.sol";
 
 library Helper {
     using WriteBuffer for *;
     using ReadBuffer for *;
 
     struct TagClassFieldBuilder {
-        WriteBuffer.buffer _buf;
-        uint256 _count;
+        WriteBuffer.buffer _nBuf;
+        WriteBuffer.buffer _tBuf;
     }
 
-    function init(
-        TagClassFieldBuilder memory builder,
-        WriteBuffer.buffer memory buf
-    ) internal pure returns (TagClassFieldBuilder memory) {
-        builder._buf = buf.writeUint8(0);
-        builder._count = 0;
+    function init(TagClassFieldBuilder memory builder)
+        internal
+        pure
+        returns (TagClassFieldBuilder memory)
+    {
+        builder._nBuf.init(64);
+        builder._tBuf.init(32);
         return builder;
     }
 
     function put(
         TagClassFieldBuilder memory builder,
         string memory fieldName,
-        IPodDB.TagFieldType fieldType
+        IPodDB.TagFieldType fieldType,
+        bool isArray
     ) internal pure returns (TagClassFieldBuilder memory) {
-        builder._buf.writeString(fieldName).writeUint8(uint8(fieldType));
-        builder._count++;
+        if (builder._nBuf.length() != 0) {
+            builder._nBuf.writeString(",");
+        }
+        builder._nBuf.writeString(fieldName);
+        if (isArray) {
+            builder._tBuf.writeUint8(uint8(IPodDB.TagFieldType.Array));
+        }
+        builder._tBuf.writeUint8(uint8(fieldType));
         return builder;
     }
 
-    function build(TagClassFieldBuilder memory builder)
+    function getFieldNames(TagClassFieldBuilder memory builder)
+        internal
+        pure
+        returns (string memory)
+    {
+        return string(builder._nBuf.getBytes());
+    }
+
+    function getFieldTypes(TagClassFieldBuilder memory builder)
         internal
         pure
         returns (bytes memory)
     {
-        return builder._buf.writeVarUintAt(0, builder._count, 1).getBytes();
+        return builder._tBuf.getBytes();
     }
 }
