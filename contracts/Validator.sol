@@ -111,9 +111,9 @@ library Validator {
         ) {
             rBuf.skip(20);
         } else if (
-            fieldType == IPodDB.TagFieldType.Uint ||
+            fieldType == IPodDB.TagFieldType.Uint256 ||
             fieldType == IPodDB.TagFieldType.Bytes32 ||
-            fieldType == IPodDB.TagFieldType.Int
+            fieldType == IPodDB.TagFieldType.Int256
         ) {
             rBuf.skip(32);
         }

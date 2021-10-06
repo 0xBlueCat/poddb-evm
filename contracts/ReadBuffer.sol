@@ -139,7 +139,7 @@ library ReadBuffer {
         return uint64(readVarUint(buf, 8));
     }
 
-    function readUint(buffer memory buf) internal pure returns (uint256) {
+    function readUint256(buffer memory buf) internal pure returns (uint256) {
         return readVarUint(buf, 32);
     }
 
@@ -159,7 +159,7 @@ library ReadBuffer {
         return int64(uint64(readVarUint(buf, 8)));
     }
 
-    function readInt(buffer memory buf) internal pure returns (int256) {
+    function readInt256(buffer memory buf) internal pure returns (int256) {
         return int256(readVarUint(buf, 32));
     }
 

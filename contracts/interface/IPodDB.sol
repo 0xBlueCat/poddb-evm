@@ -4,12 +4,12 @@ pragma solidity ^0.8.4;
 interface IPodDB {
     enum TagFieldType {
         Bool,
-        Uint,
+        Uint256,
         Uint8,
         Uint16,
         Uint32,
         Uint64,
-        Int,
+        Int256,
         Int8,
         Int16,
         Int32,

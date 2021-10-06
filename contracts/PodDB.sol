@@ -314,7 +314,7 @@ contract PodDB is Ownable, IPodDB {
             .init(84)
             .writeAddress(msg.sender)
             .writeBytes32(blockhash(block.number - 1))
-            .writeUint(++nonce);
+            .writeUint256(++nonce);
         return bytes20(keccak256(wBuf.getBytes()));
     }
 
@@ -326,10 +326,10 @@ contract PodDB is Ownable, IPodDB {
         WriteBuffer.buffer memory wBuf;
         wBuf.init(128).writeBytes20(classId).writeAddress(object.Address);
         if (object.TokenId != uint256(0)) {
-            wBuf.writeUint(object.TokenId);
+            wBuf.writeUint256(object.TokenId);
         }
         if (multiIssue) {
-            wBuf.writeUint(block.number);
+            wBuf.writeUint256(block.number);
         }
         return bytes20(keccak256(wBuf.getBytes()));
     }

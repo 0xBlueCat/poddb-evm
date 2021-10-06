@@ -212,7 +212,7 @@ library WriteBuffer {
         return writeVarUint(buf, data, 8);
     }
 
-    function writeUint(buffer memory buf, uint256 data)
+    function writeUint256(buffer memory buf, uint256 data)
         internal
         pure
         returns (buffer memory)
@@ -252,7 +252,7 @@ library WriteBuffer {
         return writeVarUint(buf, uint64(data), 8);
     }
 
-    function writeInt(buffer memory buf, int256 data)
+    function writeInt256(buffer memory buf, int256 data)
         internal
         pure
         returns (buffer memory)
