@@ -37,7 +37,7 @@ interface IPodDB {
         // 1:multiIssue flag, means one object have more one tag of this class
         // 2:inherit flag, means when a contract have a tag, all of nft mint by this contact will inherit this tag automatic
         uint8 Flags;
-        uint32 ExpiredTime; //expired time(block number) of tag, until tag update, 0 mean tag won't expiration.
+        uint32 ExpiredTime; //expired time of tag, until tag update, 0 mean tag won't expiration.
         TagAgent Agent;
     }
 
