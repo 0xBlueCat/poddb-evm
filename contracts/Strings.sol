@@ -56,6 +56,9 @@ library Strings {
             src += 32;
         }
 
+        if (len == 0) {
+            return;
+        }
         // Copy remaining bytes
         uint256 mask = 256**(32 - len) - 1;
         assembly {

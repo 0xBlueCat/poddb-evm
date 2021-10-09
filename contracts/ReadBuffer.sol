@@ -78,12 +78,14 @@ library ReadBuffer {
             src += 32;
         }
 
-        // Copy remaining bytes
-        uint256 mask = 256**(32 - len) - 1;
-        assembly {
-            let srcpart := and(mload(src), not(mask))
-            let destpart := and(mload(dest), mask)
-            mstore(dest, or(destpart, srcpart))
+        if (len > 0) {
+            // Copy remaining bytes
+            uint256 mask = 256**(32 - len) - 1;
+            assembly {
+                let srcpart := and(mload(src), not(mask))
+                let destpart := and(mload(dest), mask)
+                mstore(dest, or(destpart, srcpart))
+            }
         }
 
         buf.off = l;
