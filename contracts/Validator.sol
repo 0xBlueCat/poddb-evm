@@ -2,8 +2,8 @@
 pragma solidity ^0.8.4;
 
 import "./ReadBuffer.sol";
-import "./interface/IPodDB.sol";
 import "./Strings.sol";
+import "./interfaces/IPodDB.sol";
 
 library Validator {
     using ReadBuffer for *;

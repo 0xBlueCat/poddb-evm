@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import "./WriteBuffer.sol";
 import "./ReadBuffer.sol";
-import "./interface/IPodDB.sol";
+import "./interfaces/IPodDB.sol";
 
 library Helper {
     using WriteBuffer for *;

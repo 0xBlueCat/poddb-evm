@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.4;
 
-import "./interface/IPodDB.sol";
+import "./interfaces/IPodDB.sol";
 
 library TagFlags {
     function buildFlags(bool multiIssue, bool canInherit)
