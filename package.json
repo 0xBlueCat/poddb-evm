@@ -1,9 +1,16 @@
 {
   "name": "poddb",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "license": "MIT",
+  "dependencies": {},
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-etherscan": "^2.1.5",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@types/chai": "^4.2.22",
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^16.10.9",
     "chai": "^4.3.4",
     "dotenv": "^10.0.0",
     "eslint": "^7.32.0",
@@ -17,28 +24,47 @@
     "ethers": "^5.4.6",
     "hardhat": "^2.6.1",
     "hardhat-gas-reporter": "^1.0.4",
+    "husky": "^7.0.2",
+    "lint-staged": "^11.2.3",
+    "npm-run-all": "^4.1.5",
+    "poddb-sdk-ts": "^1.0.24",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
+    "run-all": "^1.0.1",
     "solhint": "^3.3.6",
     "solidity-coverage": "^0.7.17",
-    "ts-node": "^10.0.0"
+    "ts-node": "^10.3.0",
+    "ts-node-dev": "^1.1.8",
+    "typescript": "^4.4.4"
   },
   "scripts": {
+    "build": "tsc",
     "start": "ts-node ./src/index.ts",
     "compile": "npx hardhat compile",
-    "deploy": "npx hardhat run scripts/deploy.js --network localhost",
-    "fix:ts": "prettier --write \"src/**/*.ts\"",
-    "fix:contract": "npx prettier '**/*.{json,sol,md}' --write",
-    "fix": "run-p fix:ts fix:contract"
+    "deploy": "yarn deploy:localhost",
+    "deploy:localhost": "npx hardhat run scripts/deploy.ts --network localhost",
+    "deploy:rinkeby": "npx hardhat run scripts/deploy.ts --network rinkeby",
+    "fix:lint": "eslint --fix",
+    "fix:prettier:ts": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
+    "fix:prettier:contract": "npx prettier '**/*.{json,sol,md}' --write",
+    "fix": "run-p fix:lint fix:prettier:ts fix:prettier:contract",
+    "test": "mocha ./test/*.ts"
   },
-  "version": "1.0.0",
-  "main": "./dist/index.js",
-  "license": "MIT",
-  "dependencies": {
-    "jest": "^27.1.1",
-    "npm-run-all": "^4.1.5",
-    "run-all": "^1.0.1",
-    "ts-node-dev": "^1.1.8",
-    "typescript": "^4.4.2"
+  "mocha": {
+    "require": [
+      "ts-node/register",
+      "tsconfig-paths/register"
+    ],
+    "ui": "bdd"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
   }
 }

@@ -92,8 +92,12 @@ library ReadBuffer {
         return data;
     }
 
+    function readLength(buffer memory buf) internal pure returns (uint256) {
+        return readUint16(buf);
+    }
+
     function readBytes(buffer memory buf) internal pure returns (bytes memory) {
-        uint256 len = readUint16(buf);
+        uint256 len = readLength(buf);
         return readFixedBytes(buf, len);
     }
 
