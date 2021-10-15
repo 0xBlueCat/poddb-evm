@@ -260,12 +260,20 @@ library WriteBuffer {
         return writeVarUint(buf, uint256(data), 32);
     }
 
+    function writeLength(buffer memory buf, uint256 len)
+        internal
+        pure
+        returns (buffer memory)
+    {
+        return writeVarUint(buf, len, 2);
+    }
+
     function writeBytes(buffer memory buf, bytes memory data)
         internal
         pure
         returns (buffer memory)
     {
-        writeVarUint(buf, data.length, 2);
+        writeLength(buf, data.length);
         return writeFixedBytes(buf, data);
     }
 

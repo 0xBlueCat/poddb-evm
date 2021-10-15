@@ -93,6 +93,8 @@ library Validator {
             fieldType == IPodDB.TagFieldType.Bytes2
         ) {
             rBuf.skip(2);
+        } else if (fieldType == IPodDB.TagFieldType.Bytes3) {
+            rBuf.skip(3);
         } else if (
             fieldType == IPodDB.TagFieldType.Uint32 ||
             fieldType == IPodDB.TagFieldType.Int32 ||
