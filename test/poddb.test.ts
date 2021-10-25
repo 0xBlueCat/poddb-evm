@@ -369,6 +369,8 @@ describe("PodDB", async function () {
       tagObject,
       data
     );
+    setTagTx.wait();
+
     const rcp1 = await hre.ethers.provider.getTransactionReceipt(setTagTx.hash);
     const setTagEvt = await sdk.utils.parseSetTagEvent(rcp1.logs[0]);
     console.log("SetTagEvt:", JSON.stringify(setTagEvt, undefined, 2));
@@ -384,6 +386,7 @@ describe("PodDB", async function () {
       tagObject,
       newData
     );
+    setTagTx1.wait();
     const rcp2 = await hre.ethers.provider.getTransactionReceipt(
       setTagTx1.hash
     );
@@ -472,5 +475,46 @@ describe("PodDB", async function () {
     );
     const setTagEvt = await sdk.utils.parseSetTagEvent(setTagRcp.logs[0]);
     console.log("SetTagEvt:", JSON.stringify(setTagEvt, undefined, 2));
+  });
+
+  it("deleteTag", async function () {
+    const fieldBuilder = new sdk.TagClassFieldBuilder();
+    fieldBuilder.put("f1", TagFieldType.String);
+
+    const tagClassTx = await podDBC.newTagClass(
+      "testTagClass",
+      "f1",
+      fieldBuilder.getFieldTypes(),
+      "testTagClass",
+      sdk.DefaultTagFlags,
+      0,
+      sdk.DefaultTagAgent
+    );
+    tagClassTx.wait();
+    const rcp = await hre.ethers.provider.getTransactionReceipt(
+      tagClassTx.hash
+    );
+    const newTagClassEvt = await sdk.utils.parseNewTagClassEvent(rcp.logs[0]);
+
+    const tagObject = sdk.buildTagObject(await signers[1].getAddress());
+    const data = new sdk.WriteBuffer().writeString("Hello").getBytes();
+    const setTagTx = await podDBC.setTag(
+      newTagClassEvt.ClassId,
+      tagObject,
+      data
+    );
+    setTagTx.wait();
+
+    let hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObject);
+    expect(hasTag).to.true;
+
+    const deleteTx = await podDBC.deleteTagByObject(
+      newTagClassEvt.ClassId,
+      tagObject
+    );
+    deleteTx.wait();
+
+    hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObject);
+    expect(hasTag).to.false;
   });
 });
