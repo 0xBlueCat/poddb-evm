@@ -6,6 +6,8 @@ import { ethers } from "ethers";
 import * as sdk from "poddb-sdk-ts";
 import {
   buildTagObject,
+  DefaultTagAgent,
+  DefaultTagFlags,
   TagData,
   TagFieldType,
   WriteBuffer,
@@ -16,8 +18,8 @@ const hre = require("hardhat");
 const expect = chai.expect;
 
 let deployResult: PodDBDeployResult;
-let podDbContract: ethers.Contract;
 let signers: ethers.Signer[];
+let podDBC: sdk.PodDBContact;
 
 describe("PodDB", async function () {
   this.timeout(10000);
@@ -29,11 +31,9 @@ describe("PodDB", async function () {
     signers = await hre.ethers.getSigners();
     const defaultSigner = signers[0];
 
-    podDbContract = new ethers.Contract(
-      deployResult.PodDBAddress,
-      poddb.abi,
-      hre.ethers.provider
-    ).connect(defaultSigner);
+    podDBC = new sdk.PodDB(hre.ethers.provider)
+      .connectPodDBContract(deployResult.PodDBAddress, poddb.abi)
+      .connectSigner(defaultSigner);
   });
 
   it("tagFieldType", async function () {
@@ -71,14 +71,14 @@ describe("PodDB", async function () {
     fieldBuilder.put("f31", sdk.TagFieldType.Bytes, true);
     fieldBuilder.put("f32", sdk.TagFieldType.String, true);
 
-    const tagClassTx = await podDbContract.newTagClass(
+    const tagClassTx = await podDBC.newTagClass(
       "tagFieldTypeTest",
       "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f14,f15,f16,f17,f18,f19,f20,f21,f22,f23,f24,f25,f26,f27,f28,f29,f30,f31,f32",
       fieldBuilder.getFieldTypes(),
       "tagFieldType",
-      sdk.DefaultTagFlags,
+      DefaultTagFlags,
       0,
-      sdk.DefaultTagAgent
+      DefaultTagAgent
     );
     tagClassTx.wait();
 
@@ -91,15 +91,13 @@ describe("PodDB", async function () {
       JSON.stringify(newTagClassEvt, undefined, 2)
     );
 
-    const tagClass1 = await podDbContract.getTagClass(newTagClassEvt.ClassId);
-    expect(tagClass1.ClassId).not.eq(
+    const tagClass1 = await podDBC.getTagClass(newTagClassEvt.ClassId);
+    expect(tagClass1!.ClassId).not.eq(
       "0x0000000000000000000000000000000000000000"
     );
 
-    const tagClassInfo1 = await podDbContract.getTagClassInfo(
-      newTagClassEvt.ClassId
-    );
-    expect(tagClassInfo1.ClassId).not.eq(
+    const tagClassInfo1 = await podDBC.getTagClassInfo(newTagClassEvt.ClassId);
+    expect(tagClassInfo1!.ClassId).not.eq(
       "0x0000000000000000000000000000000000000000"
     );
 
@@ -169,7 +167,7 @@ describe("PodDB", async function () {
       .writeArray(["Hello", "World"], TagFieldType.String)
       .getBytes();
 
-    const tagTx = await podDbContract.setTag(
+    const tagTx = await podDBC.setTag(
       newTagClassEvt.ClassId,
       tagObject,
       tagData
@@ -262,7 +260,7 @@ describe("PodDB", async function () {
     const fieldBuilder = new sdk.TagClassFieldBuilder();
     fieldBuilder.put("f1", TagFieldType.String).put("f2", TagFieldType.Uint16);
 
-    const tagClassTx = await podDbContract.newTagClass(
+    const tagClassTx = await podDBC.newTagClass(
       "updateTagClass",
       "f1,f2",
       fieldBuilder.getFieldTypes(),
@@ -284,7 +282,7 @@ describe("PodDB", async function () {
 
     const newName = "newName";
     const newDesc = "newDesc";
-    const updateInfoTx = await podDbContract.updateTagClassInfo(
+    const updateInfoTx = await podDBC.updateTagClassInfo(
       newTagClassEvt.ClassId,
       newName,
       newDesc
@@ -301,11 +299,9 @@ describe("PodDB", async function () {
       JSON.stringify(newUpdateClassInfoEvt, undefined, 2)
     );
 
-    const tagClassInfo1 = await podDbContract.getTagClassInfo(
-      newTagClassEvt.ClassId
-    );
-    expect(tagClassInfo1.TagName).eq(newName);
-    expect(tagClassInfo1.Desc).eq(newDesc);
+    const tagClassInfo1 = await podDBC.getTagClassInfo(newTagClassEvt.ClassId);
+    expect(tagClassInfo1!.TagName).eq(newName);
+    expect(tagClassInfo1!.Desc).eq(newDesc);
 
     const newOwner = await signers[1].getAddress();
     const newFlag = new sdk.TagFlagsBuilder().setMultiIssueFlag().build();
@@ -315,7 +311,7 @@ describe("PodDB", async function () {
     ).build();
     const newExpired = 10;
 
-    const updateTx = await podDbContract.updateTagClass(
+    const updateTx = await podDBC.updateTagClass(
       newTagClassEvt.ClassId,
       newOwner,
       newFlag,
@@ -335,20 +331,18 @@ describe("PodDB", async function () {
       JSON.stringify(newUpdateClassEvt, undefined, 2)
     );
 
-    const tagClass1 = await podDbContract.getTagClass(
-      newUpdateClassEvt.ClassId
-    );
-    expect(tagClass1.Owner).eq(newOwner);
-    expect(tagClass1.Agent[0]).eq(newAgent[0]);
-    expect(tagClass1.Agent[1]).eq(newAgent[1]);
-    expect(tagClass1.ExpiredTime).eq(newExpired);
+    const tagClass1 = await podDBC.getTagClass(newUpdateClassEvt.ClassId);
+    expect(tagClass1!.Owner).eq(newOwner);
+    expect(tagClass1!.Agent[0]).eq(newAgent[0]);
+    expect(tagClass1!.Agent[1]).eq(newAgent[1]);
+    expect(tagClass1!.ExpiredTime).eq(newExpired);
   });
 
   it("updateTag", async function () {
     const fieldBuilder = new sdk.TagClassFieldBuilder();
     fieldBuilder.put("f1", TagFieldType.String);
 
-    const tagClassTx = await podDbContract.newTagClass(
+    const tagClassTx = await podDBC.newTagClass(
       "testTagClass",
       "f1",
       fieldBuilder.getFieldTypes(),
@@ -370,7 +364,7 @@ describe("PodDB", async function () {
 
     const tagObject = sdk.buildTagObject(await signers[1].getAddress());
     const data = new sdk.WriteBuffer().writeString("Hello").getBytes();
-    const setTagTx = await podDbContract.setTag(
+    const setTagTx = await podDBC.setTag(
       newTagClassEvt.ClassId,
       tagObject,
       data
@@ -379,16 +373,13 @@ describe("PodDB", async function () {
     const setTagEvt = await sdk.utils.parseSetTagEvent(rcp1.logs[0]);
     console.log("SetTagEvt:", JSON.stringify(setTagEvt, undefined, 2));
 
-    const tag1 = await podDbContract.getTagByObject(
-      setTagEvt.ClassId,
-      tagObject
-    );
+    const tag1 = await podDBC.getTagByObject(setTagEvt.ClassId, tagObject);
     console.log("Tag:", JSON.stringify(tag1, undefined, 2));
 
     expect(setTagEvt.Data).eq(data);
 
     const newData = new sdk.WriteBuffer().writeString("World").getBytes();
-    const setTagTx1 = await podDbContract.setTag(
+    const setTagTx1 = await podDBC.setTag(
       newTagClassEvt.ClassId,
       tagObject,
       newData
@@ -399,10 +390,7 @@ describe("PodDB", async function () {
     const setTagEvt1 = await sdk.utils.parseSetTagEvent(rcp2.logs[0]);
     console.log("SetTagEvt:", JSON.stringify(setTagEvt1, undefined, 2));
 
-    const tag2 = await podDbContract.getTagByObject(
-      setTagEvt.ClassId,
-      tagObject
-    );
+    const tag2 = await podDBC.getTagByObject(setTagEvt.ClassId, tagObject);
     console.log("Tag:", JSON.stringify(tag2, undefined, 2));
 
     expect(setTagEvt1.Data).eq(newData);
@@ -413,7 +401,7 @@ describe("PodDB", async function () {
       "f1",
       TagFieldType.Bool
     );
-    const agentTagClassTx = await podDbContract.newTagClass(
+    const agentTagClassTx = await podDBC.newTagClass(
       "agentTag",
       agentTagFieldBuilder.getFieldNames(),
       agentTagFieldBuilder.getFieldTypes(),
@@ -436,7 +424,7 @@ describe("PodDB", async function () {
 
     const agentTagObject = sdk.buildTagObject(await signers[1].getAddress());
     const agentTagData = new sdk.WriteBuffer().writeBool(true).getBytes();
-    const agentTagTx = await podDbContract.setTag(
+    const agentTagTx = await podDBC.setTag(
       agentTagClassEvt.ClassId,
       agentTagObject,
       agentTagData
@@ -446,7 +434,7 @@ describe("PodDB", async function () {
     const fieldBuilder = new sdk.TagClassFieldBuilder();
     fieldBuilder.put("f1", TagFieldType.String);
 
-    const tagClassTx = await podDbContract.newTagClass(
+    const tagClassTx = await podDBC.newTagClass(
       "testTagClass",
       "f1",
       fieldBuilder.getFieldTypes(),
@@ -473,12 +461,7 @@ describe("PodDB", async function () {
     const data = new sdk.WriteBuffer().writeString("Hello").getBytes();
 
     //can setTag
-    const podDbContract1 = new ethers.Contract(
-      deployResult.PodDBAddress,
-      poddb.abi,
-      hre.ethers.provider
-    ).connect(signers[1]);
-
+    const podDbContract1 = podDBC.Contract().connect(signers[1]);
     const setTagTx = await podDbContract1.setTag(
       newTagClassEvt.ClassId,
       tagObject,
