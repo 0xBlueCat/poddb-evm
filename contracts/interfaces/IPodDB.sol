@@ -75,9 +75,9 @@ interface IPodDB {
     }
 
     event NewTagClass(
-        bytes20 classId,
+        bytes20 indexed classId,
         string name,
-        address owner,
+        address indexed owner,
         string fieldNames,
         bytes fieldTypes,
         string desc,
@@ -88,7 +88,7 @@ interface IPodDB {
 
     event UpdateTagClass(
         bytes20 indexed classId,
-        address owner,
+        address indexed owner,
         uint8 flags,
         uint32 expiredTime,
         TagAgent agent
@@ -97,14 +97,14 @@ interface IPodDB {
     event UpdateTagClassInfo(bytes20 indexed classId, string name, string desc);
 
     event SetTag(
-        bytes20 id,
+        bytes20 indexed id,
         TagObject object,
-        bytes20 tagClassId,
+        bytes20 indexed tagClassId,
         bytes data,
         address issuer
     );
 
-    event DeleteTag(bytes20 id);
+    event DeleteTag(bytes20 indexed id);
 
     function newTagClass(
         string calldata tagName,
