@@ -218,7 +218,7 @@ contract PodDB is Ownable, IPodDB {
         require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
         require(checkTagAuth(tagClass), "PODDB: invalid tag issuer auth");
 
-        Validator.validateTagData(data, tagClass.FieldTypes);
+        validateTagData(data, tagClass.FieldTypes);
 
         bool multiTag = TagFlags.hasMultiIssueFlag(tagClass.Flags);
         bytes20 tagId = genTagId(tagClassId, object, multiTag);
@@ -279,7 +279,7 @@ contract PodDB is Ownable, IPodDB {
         TagObject calldata object,
         bytes calldata data
     ) internal {
-        Validator.validateTagData(data, fieldTypes);
+        validateTagData(data, fieldTypes);
 
         if (!multiTag) {
             Tag memory tag = Tag(
@@ -293,6 +293,13 @@ contract PodDB is Ownable, IPodDB {
         }
 
         emit SetTag(tagId, object, classId, data, msg.sender);
+    }
+
+    function validateTagData(bytes calldata data, bytes memory fieldTypes) internal pure {
+        if(fieldTypes.length == 0){
+            return;
+        }
+        Validator.validateTagData(data, fieldTypes);
     }
 
     function deleteTag(bytes20 tagId) external override {

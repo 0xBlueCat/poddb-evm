@@ -13,6 +13,9 @@ library Validator {
         string calldata fieldNames,
         bytes calldata fieldTypes
     ) external pure {
+        if(fieldTypes.length == 0 && bytes(fieldNames).length == 0){
+            return;
+        }
         Strings.slice memory fNames = fieldNames.toSlice();
         Strings.slice memory delim = ",".toSlice();
         Strings.slice memory field;

@@ -16,7 +16,8 @@ import {
   TagAgentBuilder,
 } from "poddb-sdk-ts/dist/utils/tagAgentBuilder";
 import { buildTagObject } from "poddb-sdk-ts/dist/utils/utils";
-import { TagDataParser } from "poddb-sdk-ts/dist/utils/tagDataParser"
+import { TagDataParser } from "poddb-sdk-ts/dist/utils/tagDataParser";
+
 const hre = require("hardhat");
 const expect = chai.expect;
 
@@ -76,7 +77,7 @@ describe("PodDB", async function () {
 
     const tagClassTx = await podDBC.newTagClass(
       "tagFieldTypeTest",
-      "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f14,f15,f16,f17,f18,f19,f20,f21,f22,f23,f24,f25,f26,f27,f28,f29,f30,f31,f32",
+      fieldBuilder.getFieldNames(),
       fieldBuilder.getFieldTypes(),
       "tagFieldType",
       DefaultTagFlags,
@@ -519,5 +520,99 @@ describe("PodDB", async function () {
 
     hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObject);
     expect(hasTag).to.false;
+  });
+
+  it("tagBenchmark", async function () {
+    const tagClassTx = await podDBC.newTagClass(
+      "tagBenchmark",
+      "",
+      "0x",
+      "tagBenchmark",
+      DefaultTagFlags,
+      0,
+      DefaultTagAgent
+    );
+    tagClassTx.wait();
+
+    const newTagClassRcp = await hre.ethers.provider.getTransactionReceipt(
+      tagClassTx.hash
+    );
+    console.log("newTagClass gasUsed:", newTagClassRcp.gasUsed.toNumber());
+    const newTagClassEvt = await podsdk.utils.parseNewTagClassLog(
+      newTagClassRcp.logs[0]
+    );
+    console.log(
+      "tagBenchmark newTagClassEvt:",
+      JSON.stringify(newTagClassEvt, undefined, 2)
+    );
+
+    const tagObject = buildTagObject(await signers[1].getAddress());
+    const setTagTx = await podDBC.setTag(
+      newTagClassEvt.ClassId,
+      tagObject,
+      "0x"
+    );
+    setTagTx.wait();
+
+    const setTagRcp = await hre.ethers.provider.getTransactionReceipt(
+      setTagTx.hash
+    );
+
+    console.log("setTag gasUsed:", setTagRcp.gasUsed.toNumber());
+
+    const setTagEvt = await podsdk.utils.parseSetTagLog(setTagRcp.logs[0]);
+    console.log(
+      "tagBenchmark newTagClassEvt:",
+      JSON.stringify(setTagEvt, undefined, 2)
+    );
+  });
+
+  it("nfTagBenchmark", async function () {
+    const fieldBuilder = new TagClassFieldBuilder().put(
+      "auth",
+      TagFieldType.Bool
+    );
+    const tagClassTx = await podDBC.newTagClass(
+      "nfTagBenchmark",
+      fieldBuilder.getFieldNames(),
+      fieldBuilder.getFieldTypes(),
+      "nfTagBenchmark",
+      DefaultTagFlags,
+      0,
+      DefaultTagAgent
+    );
+    tagClassTx.wait();
+
+    const newTagClassRcp = await hre.ethers.provider.getTransactionReceipt(
+      tagClassTx.hash
+    );
+    console.log("newTagClass gasUsed:", newTagClassRcp.gasUsed.toNumber());
+    const newTagClassEvt = await podsdk.utils.parseNewTagClassLog(
+      newTagClassRcp.logs[0]
+    );
+    console.log(
+      "nfTagBenchmark newTagClassEvt:",
+      JSON.stringify(newTagClassEvt, undefined, 2)
+    );
+
+    const tagObject = buildTagObject(await signers[1].getAddress());
+    const setTagTx = await podDBC.setTag(
+      newTagClassEvt.ClassId,
+      tagObject,
+      new WriteBuffer().writeBool(true).getBytes()
+    );
+    setTagTx.wait();
+
+    const setTagRcp = await hre.ethers.provider.getTransactionReceipt(
+      setTagTx.hash
+    );
+
+    console.log("setTag gasUsed:", setTagRcp.gasUsed.toNumber());
+
+    const setTagEvt = await podsdk.utils.parseSetTagLog(setTagRcp.logs[0]);
+    console.log(
+      "nfTagBenchmark newTagClassEvt:",
+      JSON.stringify(setTagEvt, undefined, 2)
+    );
   });
 });
