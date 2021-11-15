@@ -2,7 +2,7 @@
 
 PodDB is a public database on the blockchain, which makes it easy to share data between contracts. 
 
-For more information about PodDB, see [the doc](./docs/PodDB.md).
+For more information about PodDB, see [this doc](./docs/PodDB.md).
 
 # How to use?
 
