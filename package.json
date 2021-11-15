@@ -48,7 +48,8 @@
     "fix:prettier:ts": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "fix:prettier:contract": "npx prettier '**/*.{json,sol,md}' --write",
     "fix": "run-p fix:lint fix:prettier:ts fix:prettier:contract",
-    "test": "mocha ./test/*.ts"
+    "test": "mocha ./test/*.ts",
+    "node": "npx hardhat node"
   },
   "mocha": {
     "require": [
