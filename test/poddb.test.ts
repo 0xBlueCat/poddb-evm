@@ -1,7 +1,6 @@
 import * as chai from "chai";
 import "mocha";
 import { deploy, PodDBDeployResult } from "../scripts/helper";
-import poddb from "../artifacts/contracts/PodDB.sol/PodDB.json";
 import { ethers } from "ethers";
 import * as podsdk from "poddb-sdk-ts";
 import { DefaultTagFlags, TagFieldType, WriteBuffer } from "poddb-sdk-ts";
@@ -29,9 +28,8 @@ describe("PodDB", async function () {
     signers = await hre.ethers.getSigners();
     const defaultSigner = signers[0];
 
-    podDBC = new podsdk.PodDB(hre.ethers.provider)
-      .connectPodDBContract(deployResult.PodDBAddress, poddb.abi)
-      .connectSigner(defaultSigner);
+    const podDB = new podsdk.PodDB(hre.ethers.provider);
+    podDBC = (await podDB.connectPodDBContract(deployResult.PodDBAddress)).connectSigner(defaultSigner);
   });
 
   it("tagFieldType", async function () {
@@ -80,7 +78,7 @@ describe("PodDB", async function () {
     const rcp = await hre.ethers.provider.getTransactionReceipt(
       tagClassTx.hash
     );
-    const newTagClassEvt = await podsdk.utils.parseNewTagClassLog(rcp.logs[0]);
+    const newTagClassEvt = await podDBC.parseNewTagClassLog(rcp.logs[0]);
     console.log(
       "NewTagClassEvt:",
       JSON.stringify(newTagClassEvt, undefined, 2)
@@ -169,7 +167,7 @@ describe("PodDB", async function () {
     );
     tagTx.wait();
     const rcp1 = await hre.ethers.provider.getTransactionReceipt(tagTx.hash);
-    const setTagEvt = await podsdk.utils.parseSetTagLog(rcp1.logs[0]);
+    const setTagEvt = await podDBC.parseSetTagLog(rcp1.logs[0]);
     console.log("SetTagEvt:", JSON.stringify(setTagEvt, undefined, 2));
 
     const dataParser = new TagDataParser(
@@ -266,7 +264,7 @@ describe("PodDB", async function () {
     const rcp = await hre.ethers.provider.getTransactionReceipt(
       tagClassTx.hash
     );
-    const newTagClassEvt = await podsdk.utils.parseNewTagClassLog(rcp.logs[0]);
+    const newTagClassEvt = await podDBC.parseNewTagClassLog(rcp.logs[0]);
     console.log(
       "NewTagClassEvt:",
       JSON.stringify(newTagClassEvt, undefined, 2)
@@ -283,7 +281,7 @@ describe("PodDB", async function () {
     const updateInfoRcp = await hre.ethers.provider.getTransactionReceipt(
       updateInfoTx.hash
     );
-    const newUpdateClassInfoEvt = await podsdk.utils.parseUpdateTagClassInfoLog(
+    const newUpdateClassInfoEvt = await podDBC.parseUpdateTagClassInfoLog(
       updateInfoRcp.logs[0]
     );
     console.log(
@@ -315,7 +313,7 @@ describe("PodDB", async function () {
     const updateRcp = await hre.ethers.provider.getTransactionReceipt(
       updateTx.hash
     );
-    const newUpdateClassEvt = await podsdk.utils.parseUpdateTagClassLog(
+    const newUpdateClassEvt = await podDBC.parseUpdateTagClassLog(
       updateRcp.logs[0]
     );
     console.log(
@@ -345,7 +343,7 @@ describe("PodDB", async function () {
     const rcp = await hre.ethers.provider.getTransactionReceipt(
       tagClassTx.hash
     );
-    const newTagClassEvt = await podsdk.utils.parseNewTagClassLog(rcp.logs[0]);
+    const newTagClassEvt = await podDBC.parseNewTagClassLog(rcp.logs[0]);
     console.log(
       "NewTagClassEvt:",
       JSON.stringify(newTagClassEvt, undefined, 2)
@@ -361,7 +359,7 @@ describe("PodDB", async function () {
     setTagTx.wait();
 
     const rcp1 = await hre.ethers.provider.getTransactionReceipt(setTagTx.hash);
-    const setTagEvt = await podsdk.utils.parseSetTagLog(rcp1.logs[0]);
+    const setTagEvt = await podDBC.parseSetTagLog(rcp1.logs[0]);
     console.log("SetTagEvt:", JSON.stringify(setTagEvt, undefined, 2));
 
     const tag1 = await podDBC.getTagByObject(setTagEvt.ClassId, tagObject);
@@ -379,7 +377,7 @@ describe("PodDB", async function () {
     const rcp2 = await hre.ethers.provider.getTransactionReceipt(
       setTagTx1.hash
     );
-    const setTagEvt1 = await podsdk.utils.parseSetTagLog(rcp2.logs[0]);
+    const setTagEvt1 = await podDBC.parseSetTagLog(rcp2.logs[0]);
     console.log("SetTagEvt:", JSON.stringify(setTagEvt1, undefined, 2));
 
     const tag2 = await podDBC.getTagByObject(setTagEvt.ClassId, tagObject);
@@ -403,7 +401,7 @@ describe("PodDB", async function () {
     const agentTagRcp = await hre.ethers.provider.getTransactionReceipt(
       agentTagClassTx.hash
     );
-    const agentTagClassEvt = await podsdk.utils.parseNewTagClassLog(
+    const agentTagClassEvt = await podDBC.parseNewTagClassLog(
       agentTagRcp.logs[0]
     );
     console.log(
@@ -440,7 +438,7 @@ describe("PodDB", async function () {
     const rcp = await hre.ethers.provider.getTransactionReceipt(
       tagClassTx.hash
     );
-    const newTagClassEvt = await podsdk.utils.parseNewTagClassLog(rcp.logs[0]);
+    const newTagClassEvt = await podDBC.parseNewTagClassLog(rcp.logs[0]);
     console.log(
       "NewTagClassEvt:",
       JSON.stringify(newTagClassEvt, undefined, 2)
@@ -460,7 +458,7 @@ describe("PodDB", async function () {
     const setTagRcp = await hre.ethers.provider.getTransactionReceipt(
       setTagTx.hash
     );
-    const setTagEvt = await podsdk.utils.parseSetTagLog(setTagRcp.logs[0]);
+    const setTagEvt = await podDBC.parseSetTagLog(setTagRcp.logs[0]);
     console.log("SetTagEvt:", JSON.stringify(setTagEvt, undefined, 2));
   });
 
@@ -478,7 +476,7 @@ describe("PodDB", async function () {
     const rcp = await hre.ethers.provider.getTransactionReceipt(
       tagClassTx.hash
     );
-    const newTagClassEvt = await podsdk.utils.parseNewTagClassLog(rcp.logs[0]);
+    const newTagClassEvt = await podDBC.parseNewTagClassLog(rcp.logs[0]);
 
     const tagObject = buildTagObject(await signers[1].getAddress());
     const data = new podsdk.WriteBuffer().writeString("Hello").getBytes();
@@ -515,7 +513,7 @@ describe("PodDB", async function () {
       tagClassTx.hash
     );
     console.log("newTagClass gasUsed:", newTagClassRcp.gasUsed.toNumber());
-    const newTagClassEvt = await podsdk.utils.parseNewTagClassLog(
+    const newTagClassEvt = await podDBC.parseNewTagClassLog(
       newTagClassRcp.logs[0]
     );
     console.log(
@@ -537,7 +535,7 @@ describe("PodDB", async function () {
 
     console.log("setTag gasUsed:", setTagRcp.gasUsed.toNumber());
 
-    const setTagEvt = await podsdk.utils.parseSetTagLog(setTagRcp.logs[0]);
+    const setTagEvt = await podDBC.parseSetTagLog(setTagRcp.logs[0]);
     console.log(
       "tagBenchmark newTagClassEvt:",
       JSON.stringify(setTagEvt, undefined, 2)
@@ -561,7 +559,7 @@ describe("PodDB", async function () {
       tagClassTx.hash
     );
     console.log("newTagClass gasUsed:", newTagClassRcp.gasUsed.toNumber());
-    const newTagClassEvt = await podsdk.utils.parseNewTagClassLog(
+    const newTagClassEvt = await podDBC.parseNewTagClassLog(
       newTagClassRcp.logs[0]
     );
     console.log(
@@ -583,7 +581,7 @@ describe("PodDB", async function () {
 
     console.log("setTag gasUsed:", setTagRcp.gasUsed.toNumber());
 
-    const setTagEvt = await podsdk.utils.parseSetTagLog(setTagRcp.logs[0]);
+    const setTagEvt = await podDBC.parseSetTagLog(setTagRcp.logs[0]);
     console.log(
       "nfTagBenchmark newTagClassEvt:",
       JSON.stringify(setTagEvt, undefined, 2)
