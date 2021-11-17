@@ -40,7 +40,7 @@ library Validator {
     }
 
     function validateTagData(bytes calldata data, bytes memory fieldTypes)
-        external
+        internal
         pure
     {
         ReadBuffer.buffer memory dataBuf = ReadBuffer.fromBytes(data);

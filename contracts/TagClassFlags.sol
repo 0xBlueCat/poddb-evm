@@ -3,20 +3,20 @@ pragma solidity ^0.8.4;
 
 import "./interfaces/IPodDB.sol";
 
-library TagFlags {
-    function buildFlags( bool canInherit)
-        internal
-        pure
-        returns (uint8)
+library TagClassFlags {
+    function buildFlags(bool multiIssue)
+    internal
+    pure
+    returns (uint8)
     {
         uint8 flags = 0;
-        if (canInherit) {
+        if (multiIssue) {
             flags |= 1;
         }
         return flags;
     }
 
-    function hasInheritFlag(uint8 flag) internal pure returns (bool) {
+    function hasMultiIssueFlag(uint8 flag) internal pure returns (bool) {
         return flag & 1 != 0;
     }
 

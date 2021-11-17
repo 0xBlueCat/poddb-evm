@@ -10,7 +10,7 @@ contract Accessor is Ownable {
     event DeleteAccessor(address accessor);
 
     modifier onlyAccessor() {
-        require(accessors[msg.sender], "ACCESSOR: not allowed accessor");
+        require(accessors[msg.sender], "ACCESSOR: invalid accessor");
         _;
     }
 

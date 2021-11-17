@@ -135,7 +135,8 @@ library Serialization {
             .writeUint8(tag.Version)
             .writeBytes20(tag.ClassId)
             .writeBytes(tag.Data)
-            .writeUint32(tag.UpdateAt);
+            .writeUint32(tag.ExpiredAt)
+            .writeUint8(tag.Flags);
         return wBuf.getBytes();
     }
 
@@ -153,7 +154,16 @@ library Serialization {
 
         tag.ClassId = buf.readBytes20();
         tag.Data = buf.readBytes();
-        tag.UpdateAt = buf.readUint32();
+        if(tag.Version == 1){
+            //compat with previous data
+            buf.skip(4);
+            tag.ExpiredAt = 0;
+            tag.Flags = 0;
+        }else{
+            //Version:2
+            tag.ExpiredAt = buf.readUint32();
+            tag.Flags = buf.readUint8();
+        }
         return tag;
     }
 }

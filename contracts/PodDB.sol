@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./WriteBuffer.sol";
 import "./ReadBuffer.sol";
 import "./TagFlags.sol";
+import "./TagClassFlags.sol";
 import "./Validator.sol";
 import "./interfaces/IDriver.sol";
 import "./interfaces/IPodDB.sol";
@@ -13,12 +14,13 @@ contract PodDB is Ownable, IPodDB {
     using WriteBuffer for *;
     using ReadBuffer for *;
     using TagFlags for *;
+    using TagClassFlags for *;
     using Validator for *;
 
     IDriver private driver;
 
     uint256 nonce;
-    uint256 public constant Version = 1;
+    uint256 public constant Version = 2;
 
     constructor(address _driver) Ownable() {
         driver = IDriver(_driver);
@@ -35,6 +37,7 @@ contract PodDB is Ownable, IPodDB {
     ) external override returns (bytes20) {
         require(bytes(tagName).length > 0, "PODDB: tagName cannot empty");
         Validator.validateTagClassField(fieldNames, fieldTypes);
+        require(TagClassFlags.flagsValid(flags), "PODDB: invalid tagClass flags");
 
         TagClass memory tagClass = TagClass(
             genTagClassId(),
@@ -102,13 +105,10 @@ contract PodDB is Ownable, IPodDB {
         returns (Tag memory tag, bool valid)
     {
         tag = _getTag(tagId);
-        if (tag.ClassId == bytes20(0)) {
+        if(tag.ClassId == bytes20(0)){
             return (tag, valid);
         }
-        TagClass memory tagClass = this.getTagClass(tag.ClassId);
-        valid =
-            tagClass.ExpiredTime == 0 ||
-            (uint32(block.timestamp) - tag.UpdateAt) <= tagClass.ExpiredTime;
+        valid = tag.ExpiredAt == 0 || uint32(block.timestamp)  <= tag.ExpiredAt;
         return (tag, valid);
     }
 
@@ -127,8 +127,7 @@ contract PodDB is Ownable, IPodDB {
             //non-nft
             return (tag, valid);
         }
-        TagClass memory tagClass = this.getTagClass(tagClassId);
-        if (!TagFlags.hasInheritFlag(tagClass.Flags)) {
+        if (!TagFlags.hasInheritFlag(tag.Flags)) {
             return (tag, valid);
         }
         //check whether inherit from contact
@@ -180,6 +179,7 @@ contract PodDB is Ownable, IPodDB {
             tagClass.Owner == msg.sender,
             "PODDB: only owner can update tagClass"
         );
+        require(TagClassFlags.flagsValid(flags), "PODDB: invalid tagClass flags");
 
         tagClass.Owner = newOwner;
         tagClass.Flags = flags;
@@ -212,15 +212,17 @@ contract PodDB is Ownable, IPodDB {
     function setTag(
         bytes20 tagClassId,
         TagObject calldata object,
-        bytes calldata data
+        bytes calldata data,
+        uint8 flags
     ) external override returns (bytes20) {
         TagClass memory tagClass = this.getTagClass(tagClassId);
         require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
         require(checkTagAuth(tagClass), "PODDB: invalid tag issuer auth");
+        require(TagFlags.flagsValid(flags), "PODDB: invalid tag flags");
 
         validateTagData(data, tagClass.FieldTypes);
 
-        bool multiTag = TagFlags.hasMultiIssueFlag(tagClass.Flags);
+        bool multiTag = TagClassFlags.hasMultiIssueFlag(tagClass.Flags);
         bytes20 tagId = genTagId(tagClassId, object, multiTag);
 
         if (!multiTag) {
@@ -229,70 +231,15 @@ contract PodDB is Ownable, IPodDB {
                 uint8(Version),
                 tagClassId,
                 data,
-                uint32(block.timestamp)
+                tagClass.ExpiredTime == 0? 0 : tagClass.ExpiredTime + uint32(block.timestamp),
+                flags
             );
 
             _setTag(tag);
         }
 
-        emit SetTag(tagId, object, tagClassId, data, msg.sender);
+        emit SetTag(tagId, object, tagClassId, data, msg.sender, flags);
         return tagId;
-    }
-
-    function setTagBatch(
-        bytes20 tagClassId,
-        TagObject[] calldata objects,
-        bytes[] calldata datas
-    ) external override returns (bytes20[] memory) {
-        require(
-            objects.length == datas.length,
-            "PODDB: objects length not equal with datas"
-        );
-
-        TagClass memory tagClass = this.getTagClass(tagClassId);
-        require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
-        require(checkTagAuth(tagClass), "PODDB: invalid tagClass issuer auth");
-
-        bool canMultiIssue = TagFlags.hasMultiIssueFlag(tagClass.Flags);
-
-        bytes20[] memory tagIds = new bytes20[](objects.length);
-        for (uint256 i = 0; i < objects.length; i++) {
-            bytes20 tagId = genTagId(tagClassId, objects[i], canMultiIssue);
-            _newTagBatch(
-                tagClassId,
-                tagId,
-                tagClass.FieldTypes,
-                canMultiIssue,
-                objects[i],
-                datas[i]
-            );
-            tagIds[i] = tagId;
-        }
-        return tagIds;
-    }
-
-    function _newTagBatch(
-        bytes20 classId,
-        bytes20 tagId,
-        bytes memory fieldTypes,
-        bool multiTag,
-        TagObject calldata object,
-        bytes calldata data
-    ) internal {
-        validateTagData(data, fieldTypes);
-
-        if (!multiTag) {
-            Tag memory tag = Tag(
-                tagId,
-                uint8(Version),
-                classId,
-                data,
-                uint32(block.timestamp)
-            );
-            _setTag(tag);
-        }
-
-        emit SetTag(tagId, object, classId, data, msg.sender);
     }
 
     function validateTagData(bytes calldata data, bytes memory fieldTypes) internal pure {

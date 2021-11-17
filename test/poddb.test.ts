@@ -4,19 +4,13 @@ import { deploy, PodDBDeployResult } from "../scripts/helper";
 import poddb from "../artifacts/contracts/PodDB.sol/PodDB.json";
 import { ethers } from "ethers";
 import * as podsdk from "poddb-sdk-ts";
-import { TagFieldType, WriteBuffer } from "poddb-sdk-ts";
+import { DefaultTagFlags, TagFieldType, WriteBuffer } from "poddb-sdk-ts";
 import { before } from "mocha";
 import { TagClassFieldBuilder } from "poddb-sdk-ts/dist/utils/tagClassFieldBuilder";
-import {
-  DefaultTagFlags,
-  TagFlagsBuilder,
-} from "poddb-sdk-ts/dist/utils/tagFlags";
-import {
-  DefaultTagAgent,
-  TagAgentBuilder,
-} from "poddb-sdk-ts/dist/utils/tagAgentBuilder";
+import { TagAgentBuilder } from "poddb-sdk-ts/dist/utils/tagAgentBuilder";
 import { buildTagObject } from "poddb-sdk-ts/dist/utils/utils";
 import { TagDataParser } from "poddb-sdk-ts/dist/utils/tagDataParser";
+import { TagClassFlagsBuilder } from "poddb-sdk-ts/dist/utils/tagClassFlags";
 
 const hre = require("hardhat");
 const expect = chai.expect;
@@ -79,10 +73,7 @@ describe("PodDB", async function () {
       "tagFieldTypeTest",
       fieldBuilder.getFieldNames(),
       fieldBuilder.getFieldTypes(),
-      "tagFieldType",
-      DefaultTagFlags,
-      0,
-      DefaultTagAgent
+      "tagFieldType"
     );
     tagClassTx.wait();
 
@@ -268,10 +259,7 @@ describe("PodDB", async function () {
       "updateTagClass",
       "f1,f2",
       fieldBuilder.getFieldTypes(),
-      "updateTagClass test",
-      DefaultTagFlags,
-      0,
-      DefaultTagAgent
+      "updateTagClass test"
     );
     tagClassTx.wait();
 
@@ -308,7 +296,7 @@ describe("PodDB", async function () {
     expect(tagClassInfo1!.Desc).eq(newDesc);
 
     const newOwner = await signers[1].getAddress();
-    const newFlag = new TagFlagsBuilder().setMultiIssueFlag().build();
+    const newFlag = new TagClassFlagsBuilder().setMultiIssueFlag().build();
     const newAgent = new TagAgentBuilder(
       podsdk.AgentType.Address,
       await signers[2].getAddress()
@@ -350,10 +338,7 @@ describe("PodDB", async function () {
       "testTagClass",
       "f1",
       fieldBuilder.getFieldTypes(),
-      "testTagClass",
-      DefaultTagFlags,
-      0,
-      DefaultTagAgent
+      "testTagClass"
     );
     tagClassTx.wait();
 
@@ -412,10 +397,7 @@ describe("PodDB", async function () {
       "agentTag",
       agentTagFieldBuilder.getFieldNames(),
       agentTagFieldBuilder.getFieldTypes(),
-      "agent tag",
-      DefaultTagFlags,
-      0,
-      DefaultTagAgent
+      "agent tag"
     );
     agentTagClassTx.wait();
     const agentTagRcp = await hre.ethers.provider.getTransactionReceipt(
@@ -446,12 +428,12 @@ describe("PodDB", async function () {
       "f1",
       fieldBuilder.getFieldTypes(),
       "testTagClass",
-      DefaultTagFlags,
-      0,
-      new TagAgentBuilder(
-        podsdk.AgentType.Tag,
-        agentTagClassEvt.ClassId
-      ).build()
+      {
+        agent: new TagAgentBuilder(
+          podsdk.AgentType.Tag,
+          agentTagClassEvt.ClassId
+        ).build(),
+      }
     );
     tagClassTx.wait();
 
@@ -472,7 +454,8 @@ describe("PodDB", async function () {
     const setTagTx = await podDbContract1.setTag(
       newTagClassEvt.ClassId,
       tagObject,
-      data
+      data,
+      DefaultTagFlags
     );
     const setTagRcp = await hre.ethers.provider.getTransactionReceipt(
       setTagTx.hash
@@ -489,10 +472,7 @@ describe("PodDB", async function () {
       "testTagClass",
       "f1",
       fieldBuilder.getFieldTypes(),
-      "testTagClass",
-      DefaultTagFlags,
-      0,
-      DefaultTagAgent
+      "testTagClass"
     );
     tagClassTx.wait();
     const rcp = await hre.ethers.provider.getTransactionReceipt(
@@ -527,10 +507,7 @@ describe("PodDB", async function () {
       "tagBenchmark",
       "",
       "0x",
-      "tagBenchmark",
-      DefaultTagFlags,
-      0,
-      DefaultTagAgent
+      "tagBenchmark"
     );
     tagClassTx.wait();
 
@@ -576,10 +553,7 @@ describe("PodDB", async function () {
       "nfTagBenchmark",
       fieldBuilder.getFieldNames(),
       fieldBuilder.getFieldTypes(),
-      "nfTagBenchmark",
-      DefaultTagFlags,
-      0,
-      DefaultTagAgent
+      "nfTagBenchmark"
     );
     tagClassTx.wait();
 
