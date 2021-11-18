@@ -217,20 +217,21 @@ contract PodDB is Ownable, IPodDB {
         require(wildcardObject && object.TokenId == 0, "PODDB: tokenId should be zero, when has wildcard flag");
 
         bytes20 tagId = genTagId(tagClassId, object, multiTag, wildcardObject);
+        expiredTime = expiredTime == 0? 0 : expiredTime + uint32(block.timestamp);
 
         if (!multiTag) {
             Tag memory tag = Tag(
                 tagId,
                 uint8(Version),
                 tagClassId,
-                expiredTime == 0? 0 : expiredTime + uint32(block.timestamp),
+                expiredTime,
                 data
             );
 
             _setTag(tag);
         }
 
-        emit SetTag(tagId, object, tagClassId, data, msg.sender, flags);
+        emit SetTag(tagId, object, tagClassId, data, msg.sender, expiredTime, flags);
         return tagId;
     }
 

@@ -95,6 +95,7 @@ interface IPodDB {
         bytes20 indexed tagClassId,
         bytes data,
         address issuer,
+        uint32 expiredAt,
         uint8 flags
     );
 
