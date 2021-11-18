@@ -32,7 +32,6 @@ contract PodDB is Ownable, IPodDB {
         bytes calldata fieldTypes,
         string calldata desc,
         uint8 flags,
-        uint32 expiredTime,
         TagAgent calldata agent
     ) external override returns (bytes20) {
         require(bytes(tagName).length > 0, "PODDB: tagName cannot empty");
@@ -45,7 +44,6 @@ contract PodDB is Ownable, IPodDB {
             msg.sender,
             fieldTypes,
             flags,
-            expiredTime,
             agent
         );
         TagClassInfo memory classInfo = TagClassInfo(
@@ -53,8 +51,7 @@ contract PodDB is Ownable, IPodDB {
             tagClass.Version,
             tagName,
             fieldNames,
-            desc,
-            uint32(block.timestamp)
+            desc
         );
 
         _newTagClass(tagClass, classInfo);
@@ -75,7 +72,6 @@ contract PodDB is Ownable, IPodDB {
             tagClass.FieldTypes,
             tagClassInfo.Desc,
             tagClass.Flags,
-            tagClass.ExpiredTime,
             tagClass.Agent
         );
     }
@@ -118,7 +114,7 @@ contract PodDB is Ownable, IPodDB {
         override
         returns (Tag memory tag, bool valid)
     {
-        bytes20 tagId = genTagId(tagClassId, object, false);
+        bytes20 tagId = genTagId(tagClassId, object, false, false);
         (tag, valid) = this.getTagById(tagId);
         if (valid) {
             return (tag, valid);
@@ -128,17 +124,11 @@ contract PodDB is Ownable, IPodDB {
             return (tag, valid);
         }
 
-        //check whether inherit from contact
+        //check wildcard object
         TagObject memory contractObj;
         contractObj.Address = object.Address;
-        tagId = genTagId(tagClassId, contractObj, false);
-
-        Tag memory cTag;
-        (cTag, valid) = this.getTagById(tagId);
-        if(valid && TagFlags.hasInheritFlag(cTag.Flags)){
-            return (cTag, valid);
-        }
-        return (tag, valid);
+        tagId = genTagId(tagClassId, contractObj, false, true);
+        return this.getTagById(tagId);
     }
 
     function hasTag(bytes20 tagClassId, TagObject calldata object)
@@ -175,7 +165,6 @@ contract PodDB is Ownable, IPodDB {
         bytes20 classId,
         address newOwner,
         uint8 flags,
-        uint32 expiredTime,
         TagAgent calldata newAgent
     ) external override {
         TagClass memory tagClass = this.getTagClass(classId);
@@ -187,11 +176,10 @@ contract PodDB is Ownable, IPodDB {
 
         tagClass.Owner = newOwner;
         tagClass.Flags = flags;
-        tagClass.ExpiredTime = expiredTime;
         tagClass.Agent = newAgent;
         driver.setTagClass(tagClass);
 
-        emit UpdateTagClass(classId, newOwner, flags, expiredTime, newAgent);
+        emit UpdateTagClass(classId, newOwner, flags, newAgent);
     }
 
     function updateTagClassInfo(
@@ -217,6 +205,7 @@ contract PodDB is Ownable, IPodDB {
         bytes20 tagClassId,
         TagObject calldata object,
         bytes calldata data,
+        uint32 expiredTime, //Expiration time of tag in seconds, 0 means never expires
         uint8 flags
     ) external override returns (bytes20) {
         TagClass memory tagClass = this.getTagClass(tagClassId);
@@ -227,16 +216,18 @@ contract PodDB is Ownable, IPodDB {
         validateTagData(data, tagClass.FieldTypes);
 
         bool multiTag = TagClassFlags.hasMultiIssueFlag(tagClass.Flags);
-        bytes20 tagId = genTagId(tagClassId, object, multiTag);
+        bool wildcardObject = TagFlags.hasWildcardFlag(flags);
+        require(wildcardObject && object.TokenId == 0, "PODDB: tokenId should be zero, when has wildcard flag");
+
+        bytes20 tagId = genTagId(tagClassId, object, multiTag, wildcardObject);
 
         if (!multiTag) {
             Tag memory tag = Tag(
                 tagId,
                 uint8(Version),
                 tagClassId,
-                data,
-                tagClass.ExpiredTime == 0? 0 : tagClass.ExpiredTime + uint32(block.timestamp),
-                flags
+                expiredTime == 0? 0 : expiredTime + uint32(block.timestamp),
+                data
             );
 
             _setTag(tag);
@@ -279,7 +270,8 @@ contract PodDB is Ownable, IPodDB {
     function genTagId(
         bytes20 classId,
         TagObject memory object,
-        bool multiIssue
+        bool multiIssue,
+        bool wildcardObject
     ) internal view returns (bytes20 id) {
         WriteBuffer.buffer memory wBuf;
         wBuf.init(128).writeBytes20(classId).writeAddress(object.Address);
@@ -288,6 +280,9 @@ contract PodDB is Ownable, IPodDB {
         }
         if (multiIssue) {
             wBuf.writeUint256(block.number);
+        }
+        if(wildcardObject) {
+            wBuf.writeUint16(1);
         }
         return bytes20(keccak256(wBuf.getBytes()));
     }

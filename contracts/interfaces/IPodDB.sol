@@ -35,7 +35,6 @@ interface IPodDB {
         address Owner; // user address or contract address
         bytes FieldTypes; //field types
         uint8 Flags;// 1:multiIssue flag, means one object have more one tag of this class
-        uint32 ExpiredTime; //expired time of tag, until tag update, 0 mean tag won't expiration.
         TagAgent Agent;
     }
 
@@ -45,16 +44,14 @@ interface IPodDB {
         string TagName;
         string FieldNames; //name of fields, separate with comma between fields. such as "field1,field2"
         string Desc;
-        uint32 CreateAt;
     }
 
     struct Tag {
         bytes20 TagId;
         uint8 Version;
         bytes20 ClassId;
-        bytes Data;
         uint32 ExpiredAt;//Expired time
-        uint8 Flags;// 1:inherit flag, means when a contract have a tag, all of nft mint by this contact will inherit this tag automatic
+        bytes Data;
     }
 
     enum AgentType {
@@ -81,7 +78,6 @@ interface IPodDB {
         bytes fieldTypes,
         string desc,
         uint8 flags,
-        uint32 expiredTime,
         TagAgent agent
     );
 
@@ -89,7 +85,6 @@ interface IPodDB {
         bytes20 indexed classId,
         address indexed owner,
         uint8 flags,
-        uint32 expiredTime,
         TagAgent agent
     );
 
@@ -112,7 +107,6 @@ interface IPodDB {
         bytes calldata fieldTypes,
         string calldata desc,
         uint8 flags,
-        uint32 expiredTime,
         TagAgent calldata agent
     ) external returns (bytes20);
 
@@ -120,7 +114,6 @@ interface IPodDB {
         bytes20 classId,
         address newOwner,
         uint8 flags,
-        uint32 expiredTime,
         TagAgent calldata newAgent
     ) external;
 
@@ -134,7 +127,8 @@ interface IPodDB {
         bytes20 tagClassId,
         TagObject calldata object,
         bytes calldata data,
-        uint8 flags
+        uint32 expiredTime, //Expiration time of tag in seconds, 0 means never expires
+        uint8 flags//1 represents a wildcard, and the NFT sent under the target contract will have the Tag
     ) external returns (bytes20);
 
     function deleteTag(bytes20 tagId) external;

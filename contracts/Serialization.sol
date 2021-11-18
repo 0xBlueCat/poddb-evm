@@ -39,14 +39,13 @@ library Serialization {
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 48 + tagClass.FieldTypes.length;
+        uint256 count = 44 + tagClass.FieldTypes.length;
         wBuf
             .init(count)
             .writeUint8(tagClass.Version)
             .writeAddress(tagClass.Owner)
             .writeBytes(tagClass.FieldTypes)
-            .writeUint8(tagClass.Flags)
-            .writeUint32(tagClass.ExpiredTime);
+            .writeUint8(tagClass.Flags);
 
         tagClass.Agent.Agent != bytes20(0)
             ? wBuf.writeBool(true).writeFixedBytes(
@@ -74,7 +73,10 @@ library Serialization {
         tagClass.Owner = buf.readAddress();
         tagClass.FieldTypes = buf.readBytes();
         tagClass.Flags = buf.readUint8();
-        tagClass.ExpiredTime = buf.readUint32();
+        if(tagClass.Version == 1) {
+            //skip ExpiredTime field in version 1
+            buf.skip(4);
+        }
         if (buf.readBool()) {
             tagClass.Agent = deserializeAgent(buf.readFixedBytes(21));
         }
@@ -87,7 +89,7 @@ library Serialization {
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 9 +
+        uint256 count = 5 +
             bytes(classInfo.TagName).length +
             bytes(classInfo.FieldNames).length +
             bytes(classInfo.Desc).length;
@@ -96,8 +98,7 @@ library Serialization {
             .writeUint8(classInfo.Version)
             .writeString(classInfo.TagName)
             .writeString(classInfo.FieldNames)
-            .writeString(classInfo.Desc)
-            .writeUint32(classInfo.CreateAt);
+            .writeString(classInfo.Desc);
         return wBuf.getBytes();
     }
 
@@ -119,7 +120,6 @@ library Serialization {
         classInfo.TagName = buf.readString();
         classInfo.FieldNames = buf.readString();
         classInfo.Desc = buf.readString();
-        classInfo.CreateAt = buf.readUint32();
         return classInfo;
     }
 
@@ -134,9 +134,8 @@ library Serialization {
         wBuf
             .writeUint8(tag.Version)
             .writeBytes20(tag.ClassId)
-            .writeBytes(tag.Data)
             .writeUint32(tag.ExpiredAt)
-            .writeUint8(tag.Flags);
+            .writeBytes(tag.Data);
         return wBuf.getBytes();
     }
 
@@ -153,16 +152,13 @@ library Serialization {
         require(tag.Version <= version, "DESERIALIZE: incompatible version");
 
         tag.ClassId = buf.readBytes20();
-        tag.Data = buf.readBytes();
         if(tag.Version == 1){
-            //compat with previous data
-            buf.skip(4);
-            tag.ExpiredAt = 0;
-            tag.Flags = 0;
+            tag.Data = buf.readBytes();
+            //Skip UpdateAt field in version
         }else{
             //Version:2
             tag.ExpiredAt = buf.readUint32();
-            tag.Flags = buf.readUint8();
+            tag.Data = buf.readBytes();
         }
         return tag;
     }
