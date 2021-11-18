@@ -84,7 +84,6 @@ interface IPodDB {
     event UpdateTagClass(
         bytes20 indexed classId,
         address indexed owner,
-        uint8 flags,
         TagAgent agent
     );
 
@@ -113,7 +112,6 @@ interface IPodDB {
     function updateTagClass(
         bytes20 classId,
         address newOwner,
-        uint8 flags,
         TagAgent calldata newAgent
     ) external;
 

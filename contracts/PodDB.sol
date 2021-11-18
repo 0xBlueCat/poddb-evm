@@ -164,7 +164,6 @@ contract PodDB is Ownable, IPodDB {
     function updateTagClass(
         bytes20 classId,
         address newOwner,
-        uint8 flags,
         TagAgent calldata newAgent
     ) external override {
         TagClass memory tagClass = this.getTagClass(classId);
@@ -172,14 +171,12 @@ contract PodDB is Ownable, IPodDB {
             tagClass.Owner == msg.sender,
             "PODDB: only owner can update tagClass"
         );
-        require(TagClassFlags.flagsValid(flags), "PODDB: invalid tagClass flags");
 
         tagClass.Owner = newOwner;
-        tagClass.Flags = flags;
         tagClass.Agent = newAgent;
         driver.setTagClass(tagClass);
 
-        emit UpdateTagClass(classId, newOwner, flags, newAgent);
+        emit UpdateTagClass(classId, newOwner, newAgent);
     }
 
     function updateTagClassInfo(
