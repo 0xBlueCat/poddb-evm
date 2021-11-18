@@ -214,7 +214,7 @@ contract PodDB is Ownable, IPodDB {
 
         bool multiTag = TagClassFlags.hasMultiIssueFlag(tagClass.Flags);
         bool wildcardObject = TagFlags.hasWildcardFlag(flags);
-        require(wildcardObject && object.TokenId == 0, "PODDB: tokenId should be zero, when has wildcard flag");
+        require(!wildcardObject || object.TokenId == 0, "PODDB: tokenId should be zero, when has wildcard flag");
 
         bytes20 tagId = genTagId(tagClassId, object, multiTag, wildcardObject);
         expiredTime = expiredTime == 0? 0 : expiredTime + uint32(block.timestamp);
