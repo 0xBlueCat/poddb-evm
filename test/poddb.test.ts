@@ -1,7 +1,7 @@
 import * as chai from "chai";
 import "mocha";
 import { deploy, PodDBDeployResult } from "../scripts/helper";
-import { ethers } from "ethers";
+import {ethers} from "ethers";
 import * as podsdk from "poddb-sdk-ts";
 import { DefaultTagFlags, TagFieldType, WriteBuffer } from "poddb-sdk-ts";
 import { before } from "mocha";
@@ -9,7 +9,6 @@ import { TagClassFieldBuilder } from "poddb-sdk-ts/dist/utils/tagClassFieldBuild
 import { TagAgentBuilder } from "poddb-sdk-ts/dist/utils/tagAgentBuilder";
 import { buildTagObject } from "poddb-sdk-ts/dist/utils/utils";
 import { TagDataParser } from "poddb-sdk-ts/dist/utils/tagDataParser";
-import { TagClassFlagsBuilder } from "poddb-sdk-ts/dist/utils/tagClassFlags";
 import { TagFlagsBuilder } from "poddb-sdk-ts/dist/utils/tagFlags";
 
 const hre = require("hardhat");
@@ -17,7 +16,7 @@ const expect = chai.expect;
 
 let deployResult: PodDBDeployResult;
 let signers: ethers.Signer[];
-let podDBC: podsdk.PodDBContact;
+let podDBC: podsdk.PodDBContract;
 
 describe("PodDB", async function () {
   this.timeout(10000);
@@ -297,7 +296,6 @@ describe("PodDB", async function () {
     expect(tagClassInfo1!.Desc).eq(newDesc);
 
     const newOwner = await signers[1].getAddress();
-    const newFlag = new TagClassFlagsBuilder().setMultiIssueFlag().build();
     const newAgent = new TagAgentBuilder(
       podsdk.AgentType.Address,
       await signers[2].getAddress()
@@ -307,8 +305,6 @@ describe("PodDB", async function () {
     const updateTx = await podDBC.updateTagClass(
       newTagClassEvt.ClassId,
       newOwner,
-      newFlag,
-      newExpired,
       newAgent
     );
     updateTx.wait();
@@ -328,7 +324,6 @@ describe("PodDB", async function () {
     expect(tagClass1!.Owner).eq(newOwner);
     expect(tagClass1!.Agent[0]).eq(newAgent[0]);
     expect(tagClass1!.Agent[1]).eq(newAgent[1]);
-    expect(tagClass1!.ExpiredTime).eq(newExpired);
   });
 
   it("updateTag", async function () {
@@ -456,6 +451,7 @@ describe("PodDB", async function () {
       newTagClassEvt.ClassId,
       tagObject,
       data,
+      0,
       DefaultTagFlags
     );
     const setTagRcp = await hre.ethers.provider.getTransactionReceipt(
@@ -503,7 +499,7 @@ describe("PodDB", async function () {
     expect(hasTag).to.false;
   });
 
-  it("tagInheritFlags", async function () {
+  it("tagWildcardFlag", async function () {
     const tagClassTx = await podDBC.newTagClass(
       "testTagClass",
       "",
@@ -522,21 +518,25 @@ describe("PodDB", async function () {
       tagObject,
       "0x",
       {
-        flags: new TagFlagsBuilder().setCanInheritFlag().build(),
+        flags: new TagFlagsBuilder().setWildcardFlag().build(),
       }
     );
     setTagTx.wait();
 
-    let tag = await podDBC.getTagByObject(newTagClassEvt.ClassId, tagObject);
-    console.log(JSON.stringify(tag, undefined, 2));
+    const setTagReceipt = await hre.ethers.provider.getTransactionReceipt(setTagTx.hash);
+    const setTagLog = await podDBC.parseSetTagLog(setTagReceipt.logs[0])
+    console.log("SetTag:",JSON.stringify(setTagLog, undefined, 2))
 
     let hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObject);
-    expect(hasTag).to.true;
+    expect(hasTag).to.false;
 
     const tagObjectNft = buildTagObject(await signers[1].getAddress(), 1);
     hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObjectNft);
 
-    tag = await podDBC.getTagByObject(newTagClassEvt.ClassId, tagObjectNft);
+    const tag = await podDBC.getTagByObject(
+      newTagClassEvt.ClassId,
+      tagObjectNft
+    );
     console.log(JSON.stringify(tag, undefined, 2));
 
     expect(hasTag).to.true;
