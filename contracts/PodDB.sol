@@ -127,14 +127,18 @@ contract PodDB is Ownable, IPodDB {
             //non-nft
             return (tag, valid);
         }
-        if (!TagFlags.hasInheritFlag(tag.Flags)) {
-            return (tag, valid);
-        }
+
         //check whether inherit from contact
         TagObject memory contractObj;
         contractObj.Address = object.Address;
         tagId = genTagId(tagClassId, contractObj, false);
-        return this.getTagById(tagId);
+
+        Tag memory cTag;
+        (cTag, valid) = this.getTagById(tagId);
+        if(valid && TagFlags.hasInheritFlag(cTag.Flags)){
+            return (cTag, valid);
+        }
+        return (tag, valid);
     }
 
     function hasTag(bytes20 tagClassId, TagObject calldata object)

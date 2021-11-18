@@ -10,6 +10,7 @@ import { TagAgentBuilder } from "poddb-sdk-ts/dist/utils/tagAgentBuilder";
 import { buildTagObject } from "poddb-sdk-ts/dist/utils/utils";
 import { TagDataParser } from "poddb-sdk-ts/dist/utils/tagDataParser";
 import { TagClassFlagsBuilder } from "poddb-sdk-ts/dist/utils/tagClassFlags";
+import { TagFlagsBuilder } from "poddb-sdk-ts/dist/utils/tagFlags";
 
 const hre = require("hardhat");
 const expect = chai.expect;
@@ -29,7 +30,9 @@ describe("PodDB", async function () {
     const defaultSigner = signers[0];
 
     const podDB = new podsdk.PodDB(hre.ethers.provider);
-    podDBC = (await podDB.connectPodDBContract(deployResult.PodDBAddress)).connectSigner(defaultSigner);
+    podDBC = (
+      await podDB.connectPodDBContract(deployResult.PodDBAddress)
+    ).connectSigner(defaultSigner);
   });
 
   it("tagFieldType", async function () {
@@ -498,6 +501,45 @@ describe("PodDB", async function () {
 
     hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObject);
     expect(hasTag).to.false;
+  });
+
+  it("tagInheritFlags", async function () {
+    const tagClassTx = await podDBC.newTagClass(
+      "testTagClass",
+      "",
+      "0x",
+      "testTagClass"
+    );
+    tagClassTx.wait();
+    const rcp = await hre.ethers.provider.getTransactionReceipt(
+      tagClassTx.hash
+    );
+    const newTagClassEvt = await podDBC.parseNewTagClassLog(rcp.logs[0]);
+
+    const tagObject = buildTagObject(await signers[1].getAddress());
+    const setTagTx = await podDBC.setTag(
+      newTagClassEvt.ClassId,
+      tagObject,
+      "0x",
+      {
+        flags: new TagFlagsBuilder().setCanInheritFlag().build(),
+      }
+    );
+    setTagTx.wait();
+
+    let tag = await podDBC.getTagByObject(newTagClassEvt.ClassId, tagObject);
+    console.log(JSON.stringify(tag, undefined, 2));
+
+    let hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObject);
+    expect(hasTag).to.true;
+
+    const tagObjectNft = buildTagObject(await signers[1].getAddress(), 1);
+    hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObjectNft);
+
+    tag = await podDBC.getTagByObject(newTagClassEvt.ClassId, tagObjectNft);
+    console.log(JSON.stringify(tag, undefined, 2));
+
+    expect(hasTag).to.true;
   });
 
   it("tagBenchmark", async function () {
