@@ -27,7 +27,7 @@
     "husky": "^7.0.2",
     "lint-staged": "^11.2.3",
     "npm-run-all": "^4.1.5",
-    "poddb-sdk-ts": "^1.0.75",
+    "poddb-sdk-ts": "^1.0.76",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
     "run-all": "^1.0.1",
@@ -47,8 +47,8 @@
     "fix:lint": "eslint --fix",
     "fix:prettier:ts": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
     "fix:prettier:contract": "npx prettier '**/*.{json,sol,md}' --write",
-    "fix": "run-p fix:lint fix:prettier:ts fix:prettier:contract",
-    "test": "mocha ./test/*.ts",
+    "fix": "run-p fix:lint fix:prettier:contract fix:prettier:ts",
+    "test": "yarn compile mocha ./test/*.ts",
     "node": "npx hardhat node"
   },
   "mocha": {
