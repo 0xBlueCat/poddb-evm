@@ -1,38 +1,46 @@
 # PodDB
 
 ## 1. What is PodDB?
+
 PodDB is a public database on the blockchain, which makes it easy to share data between contracts. At the same time, PodDB is also object-oriented.
 
 All data in the storage pod must belong to an object. This object can be an external account address(EOA), a contract address, or an NFT, or even another TagClass (more about TagClass will be described later).
 
 ## 2. What is the mission of PodDB?
+
 PodDB's mission is to be the data layer infrastructure for Web 3.0, empowering contract-to-contract, chain-to-chain collaboration.
 
 ## 3. PodDB technology architecture
+
 PodDB mainly contains two components: on-chain contract and off-chain data indexer;
 
 ![PodDB architecture](https://github.com/0xBlueCat/docs-archive/blob/master/imgs/poddb-arch.png?raw=true)
 
 ### 3.1. Chain contract part
+
 PodDB is an on-chain database where data is serialized and stored in contracts.
 
 Therefore, the on-chain contract provides functions such as data definition, data storage and data external access interface;
 
 ### 3.2. Off-chain data indexer
+
 The data of PodDB will be stored off-chain at the same time, and various indexes will be established according to the logical relationship of the data.
 
 dApp can query all kinds of data through the data indexer under the chain.
 
 ## 4. The core data structure of PodDB
+
 ### 4.1 TagObject
+
 TagObject is the data body object in PodDB, and any data in PodDB must belong to a TagObject.
 
 ```solidity
 struct TagObject {
-    address Address;
-    uint256 TokenId;
+  address Address;
+  uint256 TokenId;
 }
-```   
+
+```
 
 A TagObject can be an external address (EOA) in an Eth, a contract address, or an ERC721 NFT. It is worth noting that a TagClass is also a TagObject.
 
@@ -45,26 +53,29 @@ A TagObject can be an external address (EOA) in an Eth, a contract address, or a
 3. If the TagObject is a TagClass, you only need to cast the TagClassId to an address, set the TagObject Address field, and keep the TokenId field at 0;
 
 ### 4.2 TagAgent
+
 The TagAgent can proxy the write-permissions of the TagClass Owner.
 
 ```solidity
 enum AgentType {
-    Address, // user address or contract address,
-    Tag //address which had this tag
+  Address, // user address or contract address,
+  Tag //address which had this tag
 }
 
 struct TagAgent {
-    AgentType Type;
-    bytes20 Agent;
+  AgentType Type;
+  bytes20 Agent;
 }
+
 ```
+
 There are two types of TagAgent:
 
 1. Address types, including EOA and contract addresses;
-   
 2. TagClass type, that is, the address (EOA or contract) that owns the Tag under the TagClass;
 
 ### 4.3 TagClass & TagClassInfo
+
 TagClass is equivalent to a table in a relational database, representing a certain type of data.
 
 TagClass defines the field name, the field type, the write-permission and the expired time, etc.
@@ -73,52 +84,55 @@ TagClassInfo is some additional description information used to describe TagClas
 
 ```solidity
 struct TagClass {
-    bytes20 ClassId;
-    uint8 Version;
-    address Owner;
-    bytes FieldTypes;
-    uint8 Flags;
-    TagAgent agent;
+  bytes20 ClassId;
+  uint8 Version;
+  address Owner;
+  bytes FieldTypes;
+  uint8 Flags;
+  TagAgent agent;
 }
 
 struct TagClassInfo {
-    bytes20 ClassId;
-    uint8 Version;
-    string TagName;
-    string FieldNames;
-    string Desc;
+  bytes20 ClassId;
+  uint8 Version;
+  string TagName;
+  string FieldNames;
+  string Desc;
 }
+
 ```
 
 #### 4.3.1. Field definition
+
 The data in PodDB is structured, and all data must conform to the field definitions in its TagClass.
 Currently, the following field types are supported in PodDB:
 
 ```solidity
 enum TagFieldType {
-    Bool,     //= 0
-    Uint256,  //= 1
-    Uint8,    //= 2
-    Uint16,   //= 3
-    Uint32,   //= 4
-    Uint64,   //= 5
-    Int256,   //= 6
-    Int8,     //= 7
-    Int16,    //= 8
-    Int32,    //= 9
-    Int64,    //= 10
-    Bytes1,   //= 11
-    Bytes2,   //= 12
-    Bytes3,   //= 13
-    Bytes4,   //= 14
-    Bytes8,   //= 15
-    Bytes20,  //= 16
-    Bytes32,  //= 17
-    Address,  //= 18
-    Bytes,    //= 19
-    String,   //= 20
-    Array     //= 21
+  Bool, //= 0
+  Uint256, //= 1
+  Uint8, //= 2
+  Uint16, //= 3
+  Uint32, //= 4
+  Uint64, //= 5
+  Int256, //= 6
+  Int8, //= 7
+  Int16, //= 8
+  Int32, //= 9
+  Int64, //= 10
+  Bytes1, //= 11
+  Bytes2, //= 12
+  Bytes3, //= 13
+  Bytes4, //= 14
+  Bytes8, //= 15
+  Bytes20, //= 16
+  Bytes32, //= 17
+  Address, //= 18
+  Bytes, //= 19
+  String, //= 20
+  Array //= 21
 }
+
 ```
 
 TagClass supports basic types such as Bool, uint256, int256, bytes, string, and Array composite types.
@@ -147,6 +161,7 @@ The field names defined by TagFieldNames are separated by commas, such as: "Name
 The data stored in the Pod DB can be parsed according to the FieldTypes definition in its TagClass.
 
 #### 4.3.2. Read and write permissions
+
 There are no restrictions on the read-permissions in PodDB. Any contract can read any data written in PodDB.
 
 PodDB only controls the write-permissions of the data.
@@ -160,6 +175,7 @@ Owner can set an agent to write. The agent can be an external address(EOA), or a
 ![PodDB-write-permission](https://github.com/0xBlueCat/docs-archive/blob/master/imgs/poddb-write-auth.png?raw=true)
 
 #### 4.3.3. special flags
+
 The Flags field of the TagClass defines some tags that can change some default behavior of PodDB.
 
 The Flags field is an Uint8 type and can have up to 8 tags. Currently, there is only 1 tags used:
@@ -187,16 +203,18 @@ it is also impossible to check whether this TagObject has this Tag in the contra
 Tag with Multi-Issue flag set can only be queried and used off-chain.
 
 ### 4.4 Tag
+
 Tag is the data under the definition of TagClass, which is equivalent to rows in a relational database.
 
 ```solidity
 struct Tag {
-    bytes20 TagId;
-    uint8 Version;
-    bytes20 ClassId;
-    bytes Data;
-    uint32 ExpiredAt;
+  bytes20 TagId;
+  uint8 Version;
+  bytes20 ClassId;
+  bytes Data;
+  uint32 ExpiredAt;
 }
+
 ```
 
 TagId is the unique flag of the Tag, generated by the TagClass ID and TagObject.
@@ -222,26 +240,50 @@ You can use wildcard flag to create the same tag for all NFTs under a contract i
 ## 5. The core interface of PodDB
 
 ```solidity
-interface PodDB{
-    //crate a new TagClass
-    function newTagClass (string calldata tagName, string calldata fieldNames, bytes calldata fieldTypes, string calldata desc, uint8 flags, TagAgent calldata agent) external returns (bytes20);
+interface PodDB {
+  //crate a new TagClass
+  function newTagClass(
+    string calldata tagName,
+    string calldata fieldNames,
+    bytes calldata fieldTypes,
+    string calldata desc,
+    uint8 flags,
+    TagAgent calldata agent
+  ) external returns (bytes20);
 
-    //set tag
-    //flags 1:wildcard
-    function setTag (bytes20 tagClassId, TagObject calldata object, bytes calldata data, uint32 expiredTime, uint8 flags) external returns (bytes20);
+  //set tag
+  //flags 1:wildcard
+  function setTag(
+    bytes20 tagClassId,
+    TagObject calldata object,
+    bytes calldata data,
+    uint32 expiredTime,
+    uint8 flags
+  ) external returns (bytes20);
 
-    //get tags via TagId
-    function getTagById (bytes20 tagId) external view returns (Tag memory tag, bool valid);
+  //get tags via TagId
+  function getTagById(bytes20 tagId)
+    external
+    view
+    returns (Tag memory tag, bool valid);
 
-    //get tags via TagObject
-    function getTagByObject (bytes20 tagClassId, TagObject calldata object) external view returns (Tag memory tag, bool valid);
+  //get tags via TagObject
+  function getTagByObject(bytes20 tagClassId, TagObject calldata object)
+    external
+    view
+    returns (Tag memory tag, bool valid);
 
-    //check whether TagObject has a tag of TagClass
-    function hasTag (bytes20 tagClassId, TagObject calldata object) external view returns (bool valid);
+  //check whether TagObject has a tag of TagClass
+  function hasTag(bytes20 tagClassId, TagObject calldata object)
+    external
+    view
+    returns (bool valid);
 }
+
 ```
 
 ## 6. Data serialization
+
 PodDB provides two Buffers to implement data serialization and deserialization operations, namely WriteBuffer and ReadBuffer.
 
 For example, there is a TagClass that defines a certain user identity.
@@ -251,43 +293,57 @@ The field name is "Id,Name,RegisterTime", and the field type is "bytes32,String,
 The serialization and deserialization codes are as follows:
 
 ```solidity
-
 contract Serialization {
-    using WriteBuffer for WriteBuffer.buffer;
-    using ReadBuffer for ReadBuffer.buffer;
-    
-    function serialize (bytes32 id, string calldata name, uint32 registerTime) public pure returns (bytes memory) {
-        WriteBuffer.buffer memory wBuf;
-        wBuf
-        .Init (32 + 4 + bytes (name).length)//init buffer capacity
-        .WriteBytes32 (id)//serialize id
-        .writeString (name)//serialize name
-        .writeUint32 (registerTime);//serialize registerTime
-        Bytes memory data = wBuf.getBytes ();
-        Return data;
-    }
-    
-    function deserialize (bytes calldata data) public pure returns (bytes32 id, string memory name, uint32 registerTime) {
-        ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes (data);
-        id = rBuf.readBytes32 ();//deserialize id;
-        name = rBuf.readString ();//deserialize name;
-        registerTime = rBuf.readUint32 ();//deserialize registerTime;
-        Return (id, name, registerTime);
-    }
+  using WriteBuffer for WriteBuffer.buffer;
+  using ReadBuffer for ReadBuffer.buffer;
+
+  function serialize(
+    bytes32 id,
+    string calldata name,
+    uint32 registerTime
+  ) public pure returns (bytes memory) {
+    WriteBuffer.buffer memory wBuf;
+    wBuf
+    .Init(32 + 4 + bytes(name).length) //init buffer capacity
+    .WriteBytes32(id) //serialize id
+    .writeString(name).writeUint32(registerTime); //serialize name //serialize registerTime
+    Bytes memory data = wBuf.getBytes();
+    Return data;
+  }
+
+  function deserialize(bytes calldata data)
+    public
+    pure
+    returns (
+      bytes32 id,
+      string memory name,
+      uint32 registerTime
+    )
+  {
+    ReadBuffer.buffer memory rBuf = ReadBuffer.fromBytes(data);
+    id = rBuf.readBytes32(); //deserialize id;
+    name = rBuf.readString(); //deserialize name;
+    registerTime = rBuf.readUint32(); //deserialize registerTime;
+    Return(id, name, registerTime);
+  }
 }
 
 ```
 
 ## 7. What value can PodDB bring?
+
 ### 7.1 Data Abstraction
+
 PodDB can provide a kind of data abstraction through TagClass.
 
 It can verify whether TagObject owns this Tag to pass certain functions, such as operation rights, user rights, etc.;
 
 ### 7.2 Separation of Computing and Storage
+
 Using PodDB, you can define a TagClass in one contract, generate a Tag, and then read the Tag in another contract.
 
 This kind of putting changeable data generation logic in one contract and stable data reading logic in another contract can make the upgrade of the contract simpler and more adaptable to external changes.
 
 ### 7.3. User-generated data
+
 With PodDB's client tools, users can generate and manage some kind of structured contract data without contract programming, which provides great convenience.

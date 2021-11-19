@@ -73,7 +73,7 @@ library Serialization {
         tagClass.Owner = buf.readAddress();
         tagClass.FieldTypes = buf.readBytes();
         tagClass.Flags = buf.readUint8();
-        if(tagClass.Version == 1) {
+        if (tagClass.Version == 1) {
             //skip ExpiredTime field in version 1
             buf.skip(4);
         }
@@ -152,10 +152,10 @@ library Serialization {
         require(tag.Version <= version, "DESERIALIZE: incompatible version");
 
         tag.ClassId = buf.readBytes20();
-        if(tag.Version == 1){
+        if (tag.Version == 1) {
             tag.Data = buf.readBytes();
             //Skip UpdateAt field in version
-        }else{
+        } else {
             //Version:2
             tag.ExpiredAt = buf.readUint32();
             tag.Data = buf.readBytes();

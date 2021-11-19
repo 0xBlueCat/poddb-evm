@@ -1,7 +1,7 @@
 import * as chai from "chai";
 import "mocha";
 import { deploy, PodDBDeployResult } from "../scripts/helper";
-import {ethers} from "ethers";
+import { ethers } from "ethers";
 import * as podsdk from "poddb-sdk-ts";
 import { DefaultTagFlags, TagFieldType, WriteBuffer } from "poddb-sdk-ts";
 import { before } from "mocha";
@@ -523,9 +523,11 @@ describe("PodDB", async function () {
     );
     setTagTx.wait();
 
-    const setTagReceipt = await hre.ethers.provider.getTransactionReceipt(setTagTx.hash);
-    const setTagLog = await podDBC.parseSetTagLog(setTagReceipt.logs[0])
-    console.log("SetTag:",JSON.stringify(setTagLog, undefined, 2))
+    const setTagReceipt = await hre.ethers.provider.getTransactionReceipt(
+      setTagTx.hash
+    );
+    const setTagLog = await podDBC.parseSetTagLog(setTagReceipt.logs[0]);
+    console.log("SetTag:", JSON.stringify(setTagLog, undefined, 2));
 
     let hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObject);
     expect(hasTag).to.false;

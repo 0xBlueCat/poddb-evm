@@ -36,7 +36,10 @@ contract PodDB is Ownable, IPodDB {
     ) external override returns (bytes20) {
         require(bytes(tagName).length > 0, "PODDB: tagName cannot empty");
         Validator.validateTagClassField(fieldNames, fieldTypes);
-        require(TagClassFlags.flagsValid(flags), "PODDB: invalid tagClass flags");
+        require(
+            TagClassFlags.flagsValid(flags),
+            "PODDB: invalid tagClass flags"
+        );
 
         TagClass memory tagClass = TagClass(
             genTagClassId(),
@@ -101,10 +104,10 @@ contract PodDB is Ownable, IPodDB {
         returns (Tag memory tag, bool valid)
     {
         tag = _getTag(tagId);
-        if(tag.ClassId == bytes20(0)){
+        if (tag.ClassId == bytes20(0)) {
             return (tag, valid);
         }
-        valid = tag.ExpiredAt == 0 || uint32(block.timestamp)  <= tag.ExpiredAt;
+        valid = tag.ExpiredAt == 0 || uint32(block.timestamp) <= tag.ExpiredAt;
         return (tag, valid);
     }
 
@@ -214,10 +217,15 @@ contract PodDB is Ownable, IPodDB {
 
         bool multiTag = TagClassFlags.hasMultiIssueFlag(tagClass.Flags);
         bool wildcardObject = TagFlags.hasWildcardFlag(flags);
-        require(!wildcardObject || object.TokenId == 0, "PODDB: tokenId should be zero, when has wildcard flag");
+        require(
+            !wildcardObject || object.TokenId == 0,
+            "PODDB: tokenId should be zero, when has wildcard flag"
+        );
 
         bytes20 tagId = genTagId(tagClassId, object, multiTag, wildcardObject);
-        expiredTime = expiredTime == 0? 0 : expiredTime + uint32(block.timestamp);
+        expiredTime = expiredTime == 0
+            ? 0
+            : expiredTime + uint32(block.timestamp);
 
         if (!multiTag) {
             Tag memory tag = Tag(
@@ -231,12 +239,23 @@ contract PodDB is Ownable, IPodDB {
             _setTag(tag);
         }
 
-        emit SetTag(tagId, object, tagClassId, data, msg.sender, expiredTime, flags);
+        emit SetTag(
+            tagId,
+            object,
+            tagClassId,
+            data,
+            msg.sender,
+            expiredTime,
+            flags
+        );
         return tagId;
     }
 
-    function validateTagData(bytes calldata data, bytes memory fieldTypes) internal pure {
-        if(fieldTypes.length == 0){
+    function validateTagData(bytes calldata data, bytes memory fieldTypes)
+        internal
+        pure
+    {
+        if (fieldTypes.length == 0) {
             return;
         }
         Validator.validateTagData(data, fieldTypes);
@@ -279,7 +298,7 @@ contract PodDB is Ownable, IPodDB {
         if (multiIssue) {
             wBuf.writeUint256(block.number);
         }
-        if(wildcardObject) {
+        if (wildcardObject) {
             wBuf.writeUint16(1);
         }
         return bytes20(keccak256(wBuf.getBytes()));
