@@ -44,7 +44,27 @@ A TagObject can be an external address (EOA) in an Eth, a contract address, or a
 
 3. If the TagObject is a TagClass, you only need to cast the TagClassId to an address, set the TagObject Address field, and keep the TokenId field at 0;
 
-### 4.2 TagClass & TagClassInfo
+### 4.2 TagAgent
+The TagAgent can proxy the write-permissions of the TagClass Owner.
+
+```solidity
+enum AgentType {
+    Address, // user address or contract address,
+    Tag //address which had this tag
+}
+
+struct TagAgent {
+    AgentType Type;
+    bytes20 Agent;
+}
+```
+There are two types of TagAgent:
+
+1. Address types, including EOA and contract addresses;
+   
+2. TagClass type, that is, the address (EOA or contract) that owns the Tag under the TagClass;
+
+### 4.3 TagClass & TagClassInfo
 TagClass is equivalent to a table in a relational database, representing a certain type of data.
 
 TagClass defines the field name, the field type, the write-permission and the expired time, etc.
@@ -58,7 +78,7 @@ struct TagClass {
     address Owner;
     bytes FieldTypes;
     uint8 Flags;
-    uint32 ExpiredTime;
+    TagAgent agent;
 }
 
 struct TagClassInfo {
@@ -67,11 +87,10 @@ struct TagClassInfo {
     string TagName;
     string FieldNames;
     string Desc;
-    uint32 CreateAt;
 }
 ```
 
-#### 4.2.1. Field definition
+#### 4.3.1. Field definition
 The data in PodDB is structured, and all data must conform to the field definitions in its TagClass.
 Currently, the following field types are supported in PodDB:
 
@@ -127,7 +146,7 @@ The field names defined by TagFieldNames are separated by commas, such as: "Name
 
 The data stored in the Pod DB can be parsed according to the FieldTypes definition in its TagClass.
 
-#### 4.2.2. Read and write permissions
+#### 4.3.2. Read and write permissions
 There are no restrictions on the read-permissions in PodDB. Any contract can read any data written in PodDB.
 
 PodDB only controls the write-permissions of the data.
@@ -140,21 +159,12 @@ Owner can set an agent to write. The agent can be an external address(EOA), or a
 
 ![PodDB-write-permission](https://github.com/0xBlueCat/docs-archive/blob/master/imgs/poddb-write-auth.png?raw=true)
 
-#### 4.2.3. Validity period
-You can define the expired time of the Tag in TagClass through the ExpiredTime field.
-
-If it is not updated before it expires, the Tag will automatically expire.
-
-ExpiredTime is a time value in seconds and has a length of 4 bytes. If the ExpiredTime is 0, it means that the Tag has no expiration time and is permanently valid.
-
-#### 4.2.4. special flags
+#### 4.3.3. special flags
 The Flags field of the TagClass defines some tags that can change some default behavior of PodDB.
 
-The Flags field is an Uint8 type and can have up to 8 tags. Currently, there are 2 tags used:
+The Flags field is an Uint8 type and can have up to 8 tags. Currently, there is only 1 tags used:
 
 `1.0X01 is the Multi-Issuer flag bit;`
-
-`2.0X02 is the Inherit marker flag bit;`
 
 By, or ("or") can be combined with '|' operator.
 
@@ -176,13 +186,7 @@ it is also impossible to check whether this TagObject has this Tag in the contra
 
 Tag with Multi-Issue flag set can only be queried and used off-chain.
 
-**Inherit flag**
-
-By default, the Tag obtained by the contract will not be inherited by the ERC721 NFT issued by this contract.
-
-If in some scenarios, if the ERC721 NFT issued by this contract needs to inherit the Tag of this contract, you can set the 'Inherit' flag in the TagClass definition;
-
-### 4.3 Tag
+### 4.4 Tag
 Tag is the data under the definition of TagClass, which is equivalent to rows in a relational database.
 
 ```solidity
@@ -191,7 +195,7 @@ struct Tag {
     uint8 Version;
     bytes20 ClassId;
     bytes Data;
-    uint32 UpdateAt;
+    uint32 ExpiredAt;
 }
 ```
 
@@ -201,19 +205,30 @@ ClassId is TagClassId;
 
 Data is the data actually stored by Tag, and the encoding of the data conforms to the specification defined by the FieldTypes field in TagClass;
 
-UpdateAt is the update time of the data. If the Tag is generated for the first time, it means the generation time of the data, which is the timestamp of the block;
+ExpiredAt is the expired time of the data in second. Zero means never expires.
 
 Note that the modifier and deleter of the Tag must have the data write permissions defined by the TagClass.
+
+#### 4.4.1 Expired time
+
+When creating a Tag, you can set an expiration time in seconds. If it is not updated before it expires, the Tag will automatically expire.
+
+ExpiredTime is a time value in seconds and has a length of 4 bytes. If the ExpiredTime is 0, it means will never expire.
+
+#### 4.4.2 Wildcard
+
+You can use wildcard flag to create the same tag for all NFTs under a contract instead of creating them individually, which is very friendly for some kind of factory NFT contract.
 
 ## 5. The core interface of PodDB
 
 ```solidity
 interface PodDB{
     //crate a new TagClass
-    function newTagClass (string calldata tagName, string calldata fieldNames, bytes calldata fieldTypes, string calldata desc, uint8 flags, uint32 expiredTime, TagAgent calldata agent) external returns (bytes20);
+    function newTagClass (string calldata tagName, string calldata fieldNames, bytes calldata fieldTypes, string calldata desc, uint8 flags, TagAgent calldata agent) external returns (bytes20);
 
     //set tag
-    function setTag (bytes20 tagClassId, TagObject calldata object, bytes calldata data) external returns (bytes20);
+    //flags 1:wildcard
+    function setTag (bytes20 tagClassId, TagObject calldata object, bytes calldata data, uint32 expiredTime, uint8 flags) external returns (bytes20);
 
     //get tags via TagId
     function getTagById (bytes20 tagId) external view returns (Tag memory tag, bool valid);
