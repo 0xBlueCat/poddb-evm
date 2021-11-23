@@ -34,7 +34,10 @@ interface IPodDB {
         uint8 Version;
         address Owner; // user address or contract address
         bytes FieldTypes; //field types
-        uint8 Flags; // 1:multiIssue flag, means one object have more one tag of this class
+        //TagClass Flags:
+        //0x01:multiIssue flag, means one object have more one tag of this class
+        //0x60:deprecated flag, if a TagClass is marked as deprecated, you cannot set Tag under this TagClass
+        uint8 Flags;
         TagAgent Agent;
     }
 
@@ -84,7 +87,8 @@ interface IPodDB {
     event UpdateTagClass(
         bytes20 indexed classId,
         address indexed owner,
-        TagAgent agent
+        TagAgent agent,
+        uint8 flags
     );
 
     event UpdateTagClassInfo(bytes20 indexed classId, string name, string desc);
@@ -113,7 +117,8 @@ interface IPodDB {
     function updateTagClass(
         bytes20 classId,
         address newOwner,
-        TagAgent calldata newAgent
+        TagAgent calldata newAgent,
+        uint8 flags
     ) external;
 
     function updateTagClassInfo(
@@ -156,4 +161,9 @@ interface IPodDB {
         external
         view
         returns (bool valid);
+
+    function getTagData(bytes20 tagClassId, TagObject calldata object)
+        external
+        view
+        returns (bytes memory data);
 }

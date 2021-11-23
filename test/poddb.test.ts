@@ -3,7 +3,12 @@ import "mocha";
 import { deploy, PodDBDeployResult } from "../scripts/helper";
 import { ethers } from "ethers";
 import * as podsdk from "poddb-sdk-ts";
-import { DefaultTagFlags, TagFieldType, WriteBuffer } from "poddb-sdk-ts";
+import {
+  DefaultTagClassFlags,
+  DefaultTagFlags,
+  TagFieldType,
+  WriteBuffer,
+} from "poddb-sdk-ts";
 import { before } from "mocha";
 import { TagClassFieldBuilder } from "poddb-sdk-ts/dist/utils/tagClassFieldBuilder";
 import { TagAgentBuilder } from "poddb-sdk-ts/dist/utils/tagAgentBuilder";
@@ -172,6 +177,10 @@ describe("PodDB", async function () {
     const setTagEvt = await podDBC.parseSetTagLog(rcp1.logs[0]);
     console.log("SetTagEvt:", JSON.stringify(setTagEvt, undefined, 2));
 
+    expect(setTagEvt.Data).to.eq(
+      await podDBC.getTagData(newTagClassEvt.ClassId, tagObject)
+    );
+
     const dataParser = new TagDataParser(
       newTagClassEvt.FieldNames,
       newTagClassEvt.FieldTypes,
@@ -300,12 +309,12 @@ describe("PodDB", async function () {
       podsdk.AgentType.Address,
       await signers[2].getAddress()
     ).build();
-    const newExpired = 10;
 
     const updateTx = await podDBC.updateTagClass(
       newTagClassEvt.ClassId,
       newOwner,
-      newAgent
+      newAgent,
+      DefaultTagClassFlags
     );
     updateTx.wait();
 

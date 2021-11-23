@@ -164,10 +164,24 @@ contract PodDB is Ownable, IPodDB {
         return this.hasTag(tagClass.Agent.Agent, object);
     }
 
+    function getTagData(bytes20 tagClassId, TagObject calldata object)
+        external
+        view
+        override
+        returns (bytes memory data)
+    {
+        (Tag memory tag, bool valid) = this.getTagByObject(tagClassId, object);
+        if (valid) {
+            data = tag.Data;
+        }
+        return data;
+    }
+
     function updateTagClass(
         bytes20 classId,
         address newOwner,
-        TagAgent calldata newAgent
+        TagAgent calldata newAgent,
+        uint8 flags
     ) external override {
         TagClass memory tagClass = this.getTagClass(classId);
         require(
@@ -177,9 +191,11 @@ contract PodDB is Ownable, IPodDB {
 
         tagClass.Owner = newOwner;
         tagClass.Agent = newAgent;
+        tagClass.Flags = flags;
+
         driver.setTagClass(tagClass);
 
-        emit UpdateTagClass(classId, newOwner, newAgent);
+        emit UpdateTagClass(classId, newOwner, newAgent, flags);
     }
 
     function updateTagClassInfo(
@@ -206,17 +222,21 @@ contract PodDB is Ownable, IPodDB {
         TagObject calldata object,
         bytes calldata data,
         uint32 expiredTime, //Expiration time of tag in seconds, 0 means never expires
-        uint8 flags
+        uint8 tagFlags
     ) external override returns (bytes20) {
         TagClass memory tagClass = this.getTagClass(tagClassId);
         require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
         require(checkTagAuth(tagClass), "PODDB: invalid tag issuer auth");
-        require(TagFlags.flagsValid(flags), "PODDB: invalid tag flags");
+        require(
+            !TagClassFlags.hasDeprecatedFlag(tagClass.Flags),
+            "PODDB: tagClass is deprecated"
+        );
+        require(TagFlags.flagsValid(tagFlags), "PODDB: invalid tag flags");
 
         validateTagData(data, tagClass.FieldTypes);
 
         bool multiTag = TagClassFlags.hasMultiIssueFlag(tagClass.Flags);
-        bool wildcardObject = TagFlags.hasWildcardFlag(flags);
+        bool wildcardObject = TagFlags.hasWildcardFlag(tagFlags);
         require(
             !wildcardObject || object.TokenId == 0,
             "PODDB: tokenId should be zero, when has wildcard flag"
@@ -246,7 +266,7 @@ contract PodDB is Ownable, IPodDB {
             data,
             msg.sender,
             expiredTime,
-            flags
+            tagFlags
         );
         return tagId;
     }

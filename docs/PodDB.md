@@ -305,8 +305,9 @@ contract Serialization {
     WriteBuffer.buffer memory wBuf;
     wBuf
     .Init(32 + 4 + bytes(name).length) //init buffer capacity
-    .WriteBytes32(id) //serialize id
-    .writeString(name).writeUint32(registerTime); //serialize name //serialize registerTime
+      .WriteBytes32(id)//serialize id
+      .writeString(name)//serialize name
+      .writeUint32(registerTime);//serialize registerTime
     Bytes memory data = wBuf.getBytes();
     Return data;
   }
