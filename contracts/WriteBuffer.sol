@@ -8,6 +8,8 @@ pragma solidity ^0.8.4;
  * for writing to them. At any time you can fetch a bytes object containing the
  * current contents of the buffer. The bytes object should not be stored between
  * operations, as it may change due to resizing of the buffer.
+ *
+ * @author PodDB.
  */
 
 library WriteBuffer {
@@ -81,6 +83,13 @@ library WriteBuffer {
         return buf;
     }
 
+    /**
+     * @dev Append the bytes to buffer, without write bytes length.
+     *     Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The bytes to write.
+     * @return The original buffer, for chaining.
+     */
     function writeFixedBytes(buffer memory buf, bytes memory data)
         internal
         pure
@@ -114,6 +123,14 @@ library WriteBuffer {
         return buf;
     }
 
+    /**
+     * @dev Append uint to buffer, according to Uint byte size.
+     *     Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The uint to write.
+     * @param len the byte size to write. For example: uint256 len is 32, uint128 len is 16, uint64 len is 8, and so on.
+     * @return The original buffer, for chaining.
+     */
     function writeVarUint(
         buffer memory buf,
         uint256 data,
@@ -140,6 +157,15 @@ library WriteBuffer {
         return buf;
     }
 
+    /**
+     * @dev Write uint to buffer, according to Uint byte size.
+     *     Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param offset The write position.
+     * @param data The uint to write.
+     * @param len the byte size to write. For example: uint256 len is 32, uint128 len is 16, uint64 len is 8, and so on.
+     * @return The original buffer, for chaining.
+     */
     function writeVarUintAt(
         buffer memory buf,
         uint256 offset,
@@ -174,10 +200,9 @@ library WriteBuffer {
     }
 
     /**
-     * @dev Writes a byte to the buffer. Resizes if doing so would exceed the
-     *      capacity of the buffer.
+     * @dev Append a uint8 number to the buffer. Resizes if doing so would exceed the capacity of the buffer.
      * @param buf The buffer to append to
-     * @param data The data to append.
+     * @param data The number to append.
      * @return The original buffer, for chaining.
      */
     function writeUint8(buffer memory buf, uint8 data)
@@ -188,6 +213,12 @@ library WriteBuffer {
         return writeVarUint(buf, data, 1);
     }
 
+    /**
+     * @dev Append a uint16 number to the buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The number to append.
+     * @return The original buffer, for chaining.
+     */
     function writeUint16(buffer memory buf, uint16 data)
         internal
         pure
@@ -196,6 +227,12 @@ library WriteBuffer {
         return writeVarUint(buf, data, 2);
     }
 
+    /**
+     * @dev Append a uint32 number to the buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The number to append.
+     * @return The original buffer, for chaining.
+     */
     function writeUint32(buffer memory buf, uint32 data)
         internal
         pure
@@ -204,6 +241,12 @@ library WriteBuffer {
         return writeVarUint(buf, data, 4);
     }
 
+    /**
+     * @dev Append a uint64 number to the buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The number to append.
+     * @return The original buffer, for chaining.
+     */
     function writeUint64(buffer memory buf, uint64 data)
         internal
         pure
@@ -212,6 +255,12 @@ library WriteBuffer {
         return writeVarUint(buf, data, 8);
     }
 
+    /**
+     * @dev Append a uint256 number to the buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The number to append.
+     * @return The original buffer, for chaining.
+     */
     function writeUint256(buffer memory buf, uint256 data)
         internal
         pure
@@ -220,6 +269,12 @@ library WriteBuffer {
         return writeVarUint(buf, data, 32);
     }
 
+    /**
+     * @dev Append an int8 number to the buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The number to append.
+     * @return The original buffer, for chaining.
+     */
     function writeInt8(buffer memory buf, int8 data)
         internal
         pure
@@ -228,6 +283,12 @@ library WriteBuffer {
         return writeVarUint(buf, uint8(data), 1);
     }
 
+    /**
+     * @dev Append an int16 number to the buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The number to append.
+     * @return The original buffer, for chaining.
+     */
     function writeInt16(buffer memory buf, int16 data)
         internal
         pure
@@ -236,6 +297,12 @@ library WriteBuffer {
         return writeVarUint(buf, uint16(data), 2);
     }
 
+    /**
+     * @dev Append an int32 number to the buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The number to append.
+     * @return The original buffer, for chaining.
+     */
     function writeInt32(buffer memory buf, int32 data)
         internal
         pure
@@ -244,6 +311,12 @@ library WriteBuffer {
         return writeVarUint(buf, uint32(data), 4);
     }
 
+    /**
+     * @dev Append an int64 number to the buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The number to append.
+     * @return The original buffer, for chaining.
+     */
     function writeInt64(buffer memory buf, int64 data)
         internal
         pure
@@ -252,6 +325,12 @@ library WriteBuffer {
         return writeVarUint(buf, uint64(data), 8);
     }
 
+    /**
+     * @dev Append an int256 number to the buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The number to append.
+     * @return The original buffer, for chaining.
+     */
     function writeInt256(buffer memory buf, int256 data)
         internal
         pure
@@ -260,6 +339,12 @@ library WriteBuffer {
         return writeVarUint(buf, uint256(data), 32);
     }
 
+    /**
+     * @dev Append a length of a array or bytes to buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param len The length of array or bytes.
+     * @return The original buffer, for chaining.
+     */
     function writeLength(buffer memory buf, uint256 len)
         internal
         pure
@@ -268,6 +353,12 @@ library WriteBuffer {
         return writeVarUint(buf, len, 2);
     }
 
+    /**
+     * @dev Append a bytes to buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer to append to
+     * @param data The bytes to append. Before append the bytes, append the length to buffer first.
+     * @return The original buffer, for chaining.
+     */
     function writeBytes(buffer memory buf, bytes memory data)
         internal
         pure
@@ -277,6 +368,14 @@ library WriteBuffer {
         return writeFixedBytes(buf, data);
     }
 
+    /**
+     * @dev Write bytes32 to buffer, according to bytes32 byte size.
+     *     Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The bytes32 to write.
+     * @param len the byte size to write. For example: bytes32 len is 32, bytes16 len is 16, bytes64 len is 8, and so on.
+     * @return The original buffer, for chaining.
+     */
     function writeVarBytes32(
         buffer memory buf,
         bytes32 data,
@@ -301,6 +400,12 @@ library WriteBuffer {
         return buf;
     }
 
+    /**
+     * @dev Write a byte to buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The byte to write.
+     * @return The original buffer, for chaining.
+     */
     function writeBytes1(buffer memory buf, bytes1 data)
         internal
         pure
@@ -309,6 +414,12 @@ library WriteBuffer {
         return writeVarBytes32(buf, data, 1);
     }
 
+    /**
+     * @dev Write bytes2 to buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The bytes2 to write.
+     * @return The original buffer, for chaining.
+     */
     function writeBytes2(buffer memory buf, bytes2 data)
         internal
         pure
@@ -317,6 +428,12 @@ library WriteBuffer {
         return writeVarBytes32(buf, data, 2);
     }
 
+    /**
+     * @dev Write bytes4 to buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The bytes4 to write.
+     * @return The original buffer, for chaining.
+     */
     function writeBytes4(buffer memory buf, bytes4 data)
         internal
         pure
@@ -325,6 +442,12 @@ library WriteBuffer {
         return writeVarBytes32(buf, data, 4);
     }
 
+    /**
+     * @dev Write bytes8 to buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The bytes8 to write.
+     * @return The original buffer, for chaining.
+     */
     function writeBytes8(buffer memory buf, bytes8 data)
         internal
         pure
@@ -333,6 +456,12 @@ library WriteBuffer {
         return writeVarBytes32(buf, data, 8);
     }
 
+    /**
+     * @dev Write bytes20 to buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The bytes20 to write.
+     * @return The original buffer, for chaining.
+     */
     function writeBytes20(buffer memory buf, bytes20 data)
         internal
         pure
@@ -341,6 +470,12 @@ library WriteBuffer {
         return writeVarBytes32(buf, data, 20);
     }
 
+    /**
+     * @dev Write bytes32 to buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The bytes32 to write.
+     * @return The original buffer, for chaining.
+     */
     function writeBytes32(buffer memory buf, bytes32 data)
         internal
         pure
@@ -349,6 +484,12 @@ library WriteBuffer {
         return writeVarBytes32(buf, data, 32);
     }
 
+    /**
+     * @dev Write a bool to buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The bool to write.
+     * @return The original buffer, for chaining.
+     */
     function writeBool(buffer memory buf, bool data)
         internal
         pure
@@ -357,6 +498,12 @@ library WriteBuffer {
         return writeVarUint(buf, data ? 1 : 0, 1);
     }
 
+    /**
+     * @dev Write an address to buffer. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The address to write.
+     * @return The original buffer, for chaining.
+     */
     function writeAddress(buffer memory buf, address data)
         internal
         pure
@@ -365,6 +512,12 @@ library WriteBuffer {
         return writeVarBytes32(buf, bytes20(data), 20);
     }
 
+    /**
+     * @dev Write a string to buffer. The same to writeBytes in effect. Resizes if doing so would exceed the capacity of the buffer.
+     * @param buf The buffer write to.
+     * @param data The string to write.
+     * @return The original buffer, for chaining.
+     */
     function writeString(buffer memory buf, string memory data)
         internal
         pure
@@ -373,10 +526,21 @@ library WriteBuffer {
         return writeBytes(buf, bytes(data));
     }
 
+    /**
+     * @dev return the bytes in buffer. The bytes object should not be stored between
+     *      operations, as it may change due to resizing of the buffer.
+     * @param buf The buffer to read.
+     * @return The bytes in buffer.
+     */
     function getBytes(buffer memory buf) internal pure returns (bytes memory) {
         return buf.buf;
     }
 
+    /**
+     * @dev return the bytes size in buffer.
+     * @param buf The buffer to read size.
+     * @return The bytes size in buffer.
+     */
     function length(buffer memory buf) internal pure returns (uint256) {
         return buf.buf.length;
     }
