@@ -37,7 +37,8 @@ contract PodDB is Ownable, IPodDB {
         require(bytes(tagName).length > 0, "PODDB: tagName cannot empty");
         Validator.validateTagClassField(fieldNames, fieldTypes);
         require(
-            TagClassFlags.flagsValid(flags),
+            TagClassFlags.flagsValid(flags) &&
+                !TagClassFlags.hasDeprecatedFlag(flags),
             "PODDB: invalid tagClass flags"
         );
 
@@ -98,13 +99,12 @@ contract PodDB is Ownable, IPodDB {
     }
 
     function getTagById(bytes20 tagId)
-        external
+        internal
         view
-        override
         returns (Tag memory tag, bool valid)
     {
         tag = _getTag(tagId);
-        if (tag.ClassId == bytes20(0)) {
+        if (tag.Version == 0) {
             return (tag, valid);
         }
         valid = tag.ExpiredAt == 0 || uint32(block.timestamp) <= tag.ExpiredAt;
@@ -117,21 +117,24 @@ contract PodDB is Ownable, IPodDB {
         override
         returns (Tag memory tag, bool valid)
     {
-        bytes20 tagId = genTagId(tagClassId, object, false, false);
-        (tag, valid) = this.getTagById(tagId);
+        bytes20 tagId = genTagId(tagClassId, object, false);
+        (tag, valid) = getTagById(tagId);
         if (valid) {
+            tag.ClassId = tagClassId;
             return (tag, valid);
         }
         if (object.TokenId == uint256(0)) {
-            //non-nft
+            //not nft
             return (tag, valid);
         }
 
         //check wildcard object
-        TagObject memory contractObj;
-        contractObj.Address = object.Address;
-        tagId = genTagId(tagClassId, contractObj, false, true);
-        return this.getTagById(tagId);
+        tagId = genTagId(tagClassId, object, true);
+        (tag, valid) = getTagById(tagId);
+        if (valid) {
+            tag.ClassId = tagClassId;
+        }
+        return (tag, valid);
     }
 
     function hasTag(bytes20 tagClassId, TagObject calldata object)
@@ -188,6 +191,10 @@ contract PodDB is Ownable, IPodDB {
             tagClass.Owner == msg.sender,
             "PODDB: only owner can update tagClass"
         );
+        require(
+            TagClassFlags.flagsValid(flags),
+            "PODDB: invalid tagClass flags"
+        );
 
         tagClass.Owner = newOwner;
         tagClass.Agent = newAgent;
@@ -195,7 +202,7 @@ contract PodDB is Ownable, IPodDB {
 
         driver.setTagClass(tagClass);
 
-        emit UpdateTagClass(classId, newOwner, newAgent, flags);
+        emit UpdateTagClass(classId, newOwner, flags, newAgent);
     }
 
     function updateTagClassInfo(
@@ -223,7 +230,7 @@ contract PodDB is Ownable, IPodDB {
         bytes calldata data,
         uint32 expiredTime, //Expiration time of tag in seconds, 0 means never expires
         uint8 tagFlags
-    ) external override returns (bytes20) {
+    ) external override returns (bytes20 tagId) {
         TagClass memory tagClass = this.getTagClass(tagClassId);
         require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
         require(checkTagAuth(tagClass), "PODDB: invalid tag issuer auth");
@@ -235,29 +242,23 @@ contract PodDB is Ownable, IPodDB {
 
         validateTagData(data, tagClass.FieldTypes);
 
-        bool multiTag = TagClassFlags.hasMultiIssueFlag(tagClass.Flags);
         bool wildcardObject = TagFlags.hasWildcardFlag(tagFlags);
         require(
             !wildcardObject || object.TokenId == 0,
             "PODDB: tokenId should be zero, when has wildcard flag"
         );
 
-        bytes20 tagId = genTagId(tagClassId, object, multiTag, wildcardObject);
-        expiredTime = expiredTime == 0
-            ? 0
-            : expiredTime + uint32(block.timestamp);
+        tagId = genTagId(tagClassId, object, wildcardObject);
 
-        if (!multiTag) {
-            Tag memory tag = Tag(
-                tagId,
-                uint8(Version),
-                tagClassId,
-                expiredTime,
-                data
-            );
+        Tag memory tag = Tag(
+            tagId,
+            uint8(Version),
+            tagClassId,
+            expiredTime == 0 ? 0 : expiredTime + uint32(block.timestamp),
+            data
+        );
 
-            _setTag(tag);
-        }
+        _setTag(tag);
 
         emit SetTag(
             tagId,
@@ -265,7 +266,7 @@ contract PodDB is Ownable, IPodDB {
             tagClassId,
             data,
             msg.sender,
-            expiredTime,
+            tag.ExpiredAt,
             tagFlags
         );
         return tagId;
@@ -281,17 +282,26 @@ contract PodDB is Ownable, IPodDB {
         Validator.validateTagData(data, fieldTypes);
     }
 
-    function deleteTag(bytes20 tagId) external override {
-        Tag memory tag = _getTag(tagId);
-        require(tag.ClassId != bytes20(0), "PODDB: invalid tagId");
-
-        TagClass memory tagClass = this.getTagClass(tag.ClassId);
-        require(tagClass.Owner != address(0), "PODDB: invalid classId of tag");
+    function deleteTag(
+        bytes20 tagId,
+        bytes20 tagClassId,
+        TagObject calldata object
+    ) external override returns (bool success) {
+        require(
+            genTagId(tagClassId, object, false) == tagId ||
+                genTagId(tagClassId, object, true) == tagId,
+            "PODDB: invalid tagId"
+        );
+        if (!_hasTag(tagId)) {
+            return false;
+        }
+        TagClass memory tagClass = this.getTagClass(tagClassId);
+        require(tagClass.Owner != address(0), "PODDB: invalid tagClassId");
         require(checkTagAuth(tagClass), "PODDB: invalid tag delete auth");
 
         _deleteTag(tagId);
-
         emit DeleteTag(tagId);
+        return true;
     }
 
     function genTagClassId() internal returns (bytes20 id) {
@@ -307,19 +317,14 @@ contract PodDB is Ownable, IPodDB {
     function genTagId(
         bytes20 classId,
         TagObject memory object,
-        bool multiIssue,
         bool wildcardObject
-    ) internal view returns (bytes20 id) {
+    ) internal pure returns (bytes20 id) {
         WriteBuffer.buffer memory wBuf;
-        wBuf.init(128).writeBytes20(classId).writeAddress(object.Address);
-        if (object.TokenId != uint256(0)) {
-            wBuf.writeUint256(object.TokenId);
-        }
-        if (multiIssue) {
-            wBuf.writeUint256(block.number);
-        }
+        wBuf.init(96).writeBytes20(classId).writeAddress(object.Address);
         if (wildcardObject) {
             wBuf.writeUint16(1);
+        } else if (object.TokenId != uint256(0)) {
+            wBuf.writeUint256(object.TokenId);
         }
         return bytes20(keccak256(wBuf.getBytes()));
     }

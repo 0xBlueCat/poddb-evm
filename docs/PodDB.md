@@ -176,31 +176,19 @@ Owner can set an agent to write. The agent can be an external address(EOA), or a
 
 #### 4.3.3. special flags
 
-The Flags field of the TagClass defines some tags that can change some default behavior of PodDB.
+The Flags field of the TagClass defines some flags that can change some default behavior of PodDB.
 
-The Flags field is an Uint8 type and can have up to 8 tags. Currently, there is only 1 tags used:
+The Flags field is an Uint8 type and can have up to 8 flags. Currently, there is only 1 flags used:
 
-`1.0X01 is the Multi-Issuer flag bit;`
+`1.0X80 is the Deprecated flag;`
 
 By, or ("or") can be combined with '|' operator.
 
-**Multi-Issue flag**
+**Deprecated flag**
 
-By default, a TagObject can only have one Tag under a TagClass. For example, TagClass defines a user permission.
+A TagClass with Deprecated flag indicates that it has expired.
 
-If a user (TagObject) owns this Tag, it means that the user has a TagClass-defined permission.
-
-At the same time, the contract can obtain this Tag through TagClassId and TagObject.
-
-However, in some cases, a TagObject needs multiple Tag data under the same TagClass, such as a TagClass that can define a diary, and users can submit multiple diaries under this TagClass.
-
-In this case, you can set the Multi-Issue flag when defining TagClass;
-
-It should be noted that if a TagClass sets the Multi-Issue tag bit, the Tag under this TagClass will not be stored on the chain,
-
-it is also impossible to check whether this TagObject has this Tag in the contract or obtain this Tag in the contract.
-
-Tag with Multi-Issue flag set can only be queried and used off-chain.
+You can view and delete those Tags under this TagClass, but you cannot create and modify those Tags.
 
 ### 4.4 Tag
 
@@ -261,12 +249,6 @@ interface PodDB {
     uint8 flags
   ) external returns (bytes20);
 
-  //get tags via TagId
-  function getTagById(bytes20 tagId)
-    external
-    view
-    returns (Tag memory tag, bool valid);
-
   //get tags via TagObject
   function getTagByObject(bytes20 tagClassId, TagObject calldata object)
     external
@@ -278,6 +260,13 @@ interface PodDB {
     external
     view
     returns (bool valid);
+
+  //delete tag
+  function deleteTag(
+    bytes20 tagId,
+    bytes20 tagClassId,
+    TagObject calldata object
+  ) external returns (bool success);
 }
 
 ```
@@ -305,9 +294,9 @@ contract Serialization {
     WriteBuffer.buffer memory wBuf;
     wBuf
     .Init(32 + 4 + bytes(name).length) //init buffer capacity
-      .WriteBytes32(id)//serialize id
-      .writeString(name)//serialize name
-      .writeUint32(registerTime);//serialize registerTime
+      .WriteBytes32(id)
+      .writeString(name)
+      .writeUint32(registerTime); //serialize id //serialize name //serialize registerTime
     Bytes memory data = wBuf.getBytes();
     Return data;
   }

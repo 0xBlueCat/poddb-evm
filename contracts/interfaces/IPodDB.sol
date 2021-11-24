@@ -35,7 +35,6 @@ interface IPodDB {
         address Owner; // user address or contract address
         bytes FieldTypes; //field types
         //TagClass Flags:
-        //0x01:multiIssue flag, means one object have more one tag of this class
         //0x60:deprecated flag, if a TagClass is marked as deprecated, you cannot set Tag under this TagClass
         uint8 Flags;
         TagAgent Agent;
@@ -87,8 +86,8 @@ interface IPodDB {
     event UpdateTagClass(
         bytes20 indexed classId,
         address indexed owner,
-        TagAgent agent,
-        uint8 flags
+        uint8 flags,
+        TagAgent agent
     );
 
     event UpdateTagClassInfo(bytes20 indexed classId, string name, string desc);
@@ -133,9 +132,13 @@ interface IPodDB {
         bytes calldata data,
         uint32 expiredTime, //Expiration time of tag in seconds, 0 means never expires
         uint8 flags //1 represents a wildcard, and the NFT sent under the target contract will have the Tag
-    ) external returns (bytes20);
+    ) external returns (bytes20 tagId);
 
-    function deleteTag(bytes20 tagId) external;
+    function deleteTag(
+        bytes20 tagId,
+        bytes20 tagClassId,
+        TagObject calldata object
+    ) external returns (bool success);
 
     function getTagClass(bytes20 tagClassId)
         external
@@ -146,11 +149,6 @@ interface IPodDB {
         external
         view
         returns (TagClassInfo memory classInfo);
-
-    function getTagById(bytes20 tagId)
-        external
-        view
-        returns (Tag memory tag, bool valid);
 
     function getTagByObject(bytes20 tagClassId, TagObject calldata object)
         external

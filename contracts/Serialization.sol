@@ -129,13 +129,11 @@ library Serialization {
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 25 + tag.Data.length;
+        uint256 count = 5 + tag.Data.length;
         wBuf.init(count);
-        wBuf
-            .writeUint8(tag.Version)
-            .writeBytes20(tag.ClassId)
-            .writeUint32(tag.ExpiredAt)
-            .writeBytes(tag.Data);
+        wBuf.writeUint8(tag.Version).writeUint32(tag.ExpiredAt).writeBytes(
+            tag.Data
+        );
         return wBuf.getBytes();
     }
 
@@ -151,8 +149,8 @@ library Serialization {
         tag.Version = buf.readUint8();
         require(tag.Version <= version, "DESERIALIZE: incompatible version");
 
-        tag.ClassId = buf.readBytes20();
         if (tag.Version == 1) {
+            buf.skip(20); //Skip classId
             tag.Data = buf.readBytes();
             //Skip UpdateAt field in version
         } else {

@@ -12,7 +12,7 @@ import {
 import { before } from "mocha";
 import { TagClassFieldBuilder } from "poddb-sdk-ts/dist/utils/tagClassFieldBuilder";
 import { TagAgentBuilder } from "poddb-sdk-ts/dist/utils/tagAgentBuilder";
-import { buildTagObject } from "poddb-sdk-ts/dist/utils/utils";
+import { buildTagObject, genTagId } from "poddb-sdk-ts/dist/utils/utils";
 import { TagDataParser } from "poddb-sdk-ts/dist/utils/tagDataParser";
 import { TagFlagsBuilder } from "poddb-sdk-ts/dist/utils/tagFlags";
 
@@ -498,7 +498,8 @@ describe("PodDB", async function () {
     let hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObject);
     expect(hasTag).to.true;
 
-    const deleteTx = await podDBC.deleteTagByObject(
+    const deleteTx = await podDBC.deleteTag(
+      genTagId(newTagClassEvt.ClassId, tagObject),
       newTagClassEvt.ClassId,
       tagObject
     );
