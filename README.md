@@ -1,8 +1,10 @@
-# PodDB-evm
+# PodDB-EVM
 
 PodDB-EVM is a solidity contract for PodDB that runs on an EVM-compatible blockchain, such as ethereum, bsc, c-chain in avax, etc.
 
 PodDB is a public database on the blockchain, which makes it easy to share data between contracts.
+
+PodDB Version: 2
 
 For more information about PodDB, see [this doc](./docs/PodDB.md).
 
