@@ -2,26 +2,28 @@ import * as chai from "chai";
 import "mocha";
 import { deploy, PodDBDeployResult } from "../scripts/helper";
 import { ethers } from "ethers";
-import * as podsdk from "poddb-sdk-ts";
+import * as podsdk from "poddb-evm-sdk-ts";
 import {
-  DefaultTagClassFlags,
-  DefaultTagFlags,
   TagFieldType,
   WriteBuffer,
-} from "poddb-sdk-ts";
+  PodDBContract,
+  TagClassFieldBuilder,
+  TagAgentBuilder,
+  buildTagObject,
+  genTagId,
+  TagDataParser,
+  TagFlagsBuilder,
+} from "poddb-evm-sdk-ts";
+import { DefaultTagFlags } from "poddb-evm-sdk-ts/dist/utils/tagFlags";
+import { DefaultTagClassFlags } from "poddb-evm-sdk-ts/dist/utils/tagClassFlags";
 import { before } from "mocha";
-import { TagClassFieldBuilder } from "poddb-sdk-ts/dist/utils/tagClassFieldBuilder";
-import { TagAgentBuilder } from "poddb-sdk-ts/dist/utils/tagAgentBuilder";
-import { buildTagObject, genTagId } from "poddb-sdk-ts/dist/utils/utils";
-import { TagDataParser } from "poddb-sdk-ts/dist/utils/tagDataParser";
-import { TagFlagsBuilder } from "poddb-sdk-ts/dist/utils/tagFlags";
 
 const hre = require("hardhat");
 const expect = chai.expect;
 
 let deployResult: PodDBDeployResult;
 let signers: ethers.Signer[];
-let podDBC: podsdk.PodDBContract;
+let podDBC: PodDBContract;
 
 describe("PodDB", async function () {
   this.timeout(10000);
@@ -33,9 +35,12 @@ describe("PodDB", async function () {
     signers = await hre.ethers.getSigners();
     const defaultSigner = signers[0];
 
-    const podDB = new podsdk.PodDB(hre.ethers.provider);
+    // const podDB = new podsdk.PodDB(hre.ethers.provider);
     podDBC = (
-      await podDB.connectPodDBContract(deployResult.PodDBAddress)
+      await PodDBContract.getPodDBContractV2(
+        hre.ethers.provider,
+        deployResult.PodDBAddress
+      )
     ).connectSigner(defaultSigner);
   });
 
@@ -292,6 +297,7 @@ describe("PodDB", async function () {
     const updateInfoRcp = await hre.ethers.provider.getTransactionReceipt(
       updateInfoTx.hash
     );
+
     const newUpdateClassInfoEvt = await podDBC.parseUpdateTagClassInfoLog(
       updateInfoRcp.logs[0]
     );
@@ -321,15 +327,16 @@ describe("PodDB", async function () {
     const updateRcp = await hre.ethers.provider.getTransactionReceipt(
       updateTx.hash
     );
-    const newUpdateClassEvt = await podDBC.parseUpdateTagClassLog(
+
+    const updateClassEvt = await podDBC.parseUpdateTagClassLog(
       updateRcp.logs[0]
     );
     console.log(
       "UpdateTagClassEvt:",
-      JSON.stringify(newUpdateClassEvt, undefined, 2)
+      JSON.stringify(updateClassEvt, undefined, 2)
     );
 
-    const tagClass1 = await podDBC.getTagClass(newUpdateClassEvt.ClassId);
+    const tagClass1 = await podDBC.getTagClass(updateClassEvt.ClassId);
     expect(tagClass1!.Owner).eq(newOwner);
     expect(tagClass1!.Agent[0]).eq(newAgent[0]);
     expect(tagClass1!.Agent[1]).eq(newAgent[1]);
@@ -455,7 +462,7 @@ describe("PodDB", async function () {
     const data = new podsdk.WriteBuffer().writeString("Hello").getBytes();
 
     //can setTag
-    const podDbContract1 = podDBC.Contract().connect(signers[1]);
+    const podDbContract1 = podDBC.getContract().connect(signers[1]);
     const setTagTx = await podDbContract1.setTag(
       newTagClassEvt.ClassId,
       tagObject,
