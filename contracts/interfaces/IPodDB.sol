@@ -131,7 +131,7 @@ interface IPodDB {
         TagObject calldata object,
         bytes calldata data,
         uint32 expiredTime, //Expiration time of tag in seconds, 0 means never expires
-        uint8 flags //1 represents a wildcard, and the NFT sent under the target contract will have the Tag
+        uint8 flags //1 represents a wildcard, and all of NFTs under the target contract will have the Tag
     ) external returns (bytes20 tagId);
 
     function deleteTag(
