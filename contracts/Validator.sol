@@ -2,27 +2,27 @@
 pragma solidity ^0.8.4;
 
 import "./ReadBuffer.sol";
-import "./Strings.sol";
 import "./interfaces/IPodDB.sol";
 
 library Validator {
     using ReadBuffer for *;
-    using Strings for *;
 
     function validateTagClassField(
-        string calldata fieldNames,
+        bytes calldata fieldNames,
         bytes calldata fieldTypes
-    ) external pure {
+    ) internal pure {
         if (fieldTypes.length == 0 && bytes(fieldNames).length == 0) {
             return;
         }
-        Strings.slice memory fNames = fieldNames.toSlice();
-        Strings.slice memory delim = ",".toSlice();
-        Strings.slice memory field;
-        uint256 nameNum = fNames.count(delim) + 1;
-        for (uint256 i = 0; i < nameNum; i++) {
-            field = fNames.split(delim);
-            require(field._len > 0, "VALIDATOR: field name cannot empty");
+
+        uint256 nameNum = 0;
+        ReadBuffer.buffer memory nameBuf = ReadBuffer.fromBytes(fieldNames);
+        while (nameBuf.left() > 0) {
+            require(
+                nameBuf.skipBytes() > 0,
+                "VALIDATOR: field name cannot empty"
+            );
+            nameNum++;
         }
 
         uint256 typeNum = 0;

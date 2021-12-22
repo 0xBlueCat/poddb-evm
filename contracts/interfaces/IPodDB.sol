@@ -44,7 +44,7 @@ interface IPodDB {
         bytes20 ClassId;
         uint8 Version;
         string TagName;
-        string FieldNames; //name of fields, separate with comma between fields. such as "field1,field2"
+        bytes FieldNames; //name of fields
         string Desc;
     }
 
@@ -83,7 +83,7 @@ interface IPodDB {
         bytes20 indexed classId,
         string name,
         address indexed owner,
-        string fieldNames,
+        bytes fieldNames,
         bytes fieldTypes,
         string desc,
         uint8 flags,
@@ -113,7 +113,7 @@ interface IPodDB {
 
     function newTagClass(
         string calldata tagName,
-        string calldata fieldNames,
+        bytes calldata fieldNames,
         bytes calldata fieldTypes,
         string calldata desc,
         uint8 flags,

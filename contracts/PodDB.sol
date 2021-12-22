@@ -28,7 +28,7 @@ contract PodDB is Ownable, IPodDB {
 
     function newTagClass(
         string calldata tagName,
-        string calldata fieldNames,
+        bytes calldata fieldNames,
         bytes calldata fieldTypes,
         string calldata desc,
         uint8 flags,

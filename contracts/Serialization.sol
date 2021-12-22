@@ -91,13 +91,13 @@ library Serialization {
         WriteBuffer.buffer memory wBuf;
         uint256 count = 7 +
             bytes(classInfo.TagName).length +
-            bytes(classInfo.FieldNames).length +
+            classInfo.FieldNames.length +
             bytes(classInfo.Desc).length;
         wBuf
             .init(count)
             .writeUint8(classInfo.Version)
             .writeString(classInfo.TagName)
-            .writeString(classInfo.FieldNames)
+            .writeBytes(classInfo.FieldNames)
             .writeString(classInfo.Desc);
         return wBuf.getBytes();
     }
@@ -118,7 +118,7 @@ library Serialization {
         );
 
         classInfo.TagName = buf.readString();
-        classInfo.FieldNames = buf.readString();
+        classInfo.FieldNames = buf.readBytes();
         classInfo.Desc = buf.readString();
         return classInfo;
     }

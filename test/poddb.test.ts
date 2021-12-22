@@ -271,7 +271,7 @@ describe("PodDB", async function () {
 
     const tagClassTx = await podDBC.newTagClass(
       "updateTagClass",
-      "f1,f2",
+      fieldBuilder.getFieldNames(),
       fieldBuilder.getFieldTypes(),
       "updateTagClass test"
     );
@@ -345,7 +345,7 @@ describe("PodDB", async function () {
 
     const tagClassTx = await podDBC.newTagClass(
       "testTagClass",
-      "f1",
+      fieldBuilder.getFieldNames(),
       fieldBuilder.getFieldTypes(),
       "testTagClass"
     );
@@ -435,7 +435,7 @@ describe("PodDB", async function () {
 
     const tagClassTx = await podDBC.newTagClass(
       "testTagClass",
-      "f1",
+      fieldBuilder.getFieldNames(),
       fieldBuilder.getFieldTypes(),
       "testTagClass",
       {
@@ -478,7 +478,7 @@ describe("PodDB", async function () {
 
     const tagClassTx = await podDBC.newTagClass(
       "testTagClass",
-      "f1",
+      fieldBuilder.getFieldNames(),
       fieldBuilder.getFieldTypes(),
       "testTagClass"
     );
@@ -514,7 +514,7 @@ describe("PodDB", async function () {
   it("tagWildcardFlag", async function () {
     const tagClassTx = await podDBC.newTagClass(
       "testTagClass",
-      "",
+      "0x",
       "0x",
       "testTagClass"
     );
@@ -562,7 +562,7 @@ describe("PodDB", async function () {
   it("tagBenchmark", async function () {
     const tagClassTx = await podDBC.newTagClass(
       "tagBenchmark",
-      "",
+      "0x",
       "0x",
       "tagBenchmark"
     );
@@ -596,7 +596,7 @@ describe("PodDB", async function () {
 
     const setTagEvt = await podDBC.parseSetTagLog(setTagRcp.logs[0]);
     console.log(
-      "tagBenchmark newTagClassEvt:",
+      "tagBenchmark newTagEvt:",
       JSON.stringify(setTagEvt, undefined, 2)
     );
   });
@@ -642,7 +642,7 @@ describe("PodDB", async function () {
 
     const setTagEvt = await podDBC.parseSetTagLog(setTagRcp.logs[0]);
     console.log(
-      "nfTagBenchmark newTagClassEvt:",
+      "nfTagBenchmark newTagEvt:",
       JSON.stringify(setTagEvt, undefined, 2)
     );
   });

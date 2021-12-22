@@ -26,16 +26,7 @@ export async function deployDriver(storageAddress:string):Promise<string>{
 }
 
 export async function deployPodDB(driverAddress:string):Promise<string>{
-    const validatorContract = await hre.ethers.getContractFactory("Validator");
-    const validator = await validatorContract.deploy();
-    await validator.deployed();
-    console.log("Validator deployed to:", validator.address)
-
-    const podDBContract = await hre.ethers.getContractFactory("PodDB",{
-        libraries:{
-            Validator:validator.address
-        }
-    });
+    const podDBContract = await hre.ethers.getContractFactory("PodDB");
     const podDB = await podDBContract.deploy(driverAddress);
     await podDB.deployed();
     console.log("PodDB deployed to:", podDB.address)
