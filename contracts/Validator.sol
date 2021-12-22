@@ -50,6 +50,7 @@ library Validator {
                 uint8(fieldTypes[i])
             );
             if (fieldType == IPodDB.TagFieldType.Array) {
+                require(!isArray, "VALIDATOR: nested array doesn't support");
                 isArray = true;
                 continue;
             }
@@ -57,7 +58,6 @@ library Validator {
                 validateBaseType(fieldType, dataBuf);
                 continue;
             }
-            //note that array type doest not support nested array!
             validateArrayType(fieldType, dataBuf);
             isArray = false;
         }
