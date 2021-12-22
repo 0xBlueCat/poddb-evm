@@ -8,11 +8,11 @@ import {
   WriteBuffer,
   PodDBContract,
   TagClassFieldBuilder,
-  TagAgentBuilder,
-  buildTagObject,
   genTagId,
   TagDataParser,
   TagFlagsBuilder,
+  TagObject,
+  TagAgent,
 } from "poddb-evm-sdk-ts";
 import { DefaultTagFlags } from "poddb-evm-sdk-ts/dist/utils/tagFlags";
 import { DefaultTagClassFlags } from "poddb-evm-sdk-ts/dist/utils/tagClassFlags";
@@ -106,7 +106,7 @@ describe("PodDB", async function () {
       "0x0000000000000000000000000000000000000000"
     );
 
-    const tagObject = buildTagObject(
+    const tagObject = TagObject.fromAddress(
       "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
     );
     const tagData = new WriteBuffer()
@@ -311,10 +311,7 @@ describe("PodDB", async function () {
     expect(tagClassInfo1!.Desc).eq(newDesc);
 
     const newOwner = await signers[1].getAddress();
-    const newAgent = new TagAgentBuilder(
-      podsdk.AgentType.Address,
-      await signers[2].getAddress()
-    ).build();
+    const newAgent = TagAgent.fromAddress(await signers[2].getAddress());
 
     const updateTx = await podDBC.updateTagClass(
       newTagClassEvt.ClassId,
@@ -363,8 +360,9 @@ describe("PodDB", async function () {
       JSON.stringify(newTagClassEvt, undefined, 2)
     );
 
-    const tagObject = buildTagObject(await signers[1].getAddress());
+    const tagObject = TagObject.fromAddress(await signers[1].getAddress());
     const data = new podsdk.WriteBuffer().writeString("Hello").getBytes();
+
     const setTagTx = await podDBC.setTag(
       newTagClassEvt.ClassId,
       tagObject,
@@ -423,7 +421,7 @@ describe("PodDB", async function () {
       JSON.stringify(agentTagClassEvt, undefined, 2)
     );
 
-    const agentTagObject = buildTagObject(await signers[1].getAddress());
+    const agentTagObject = TagObject.fromAddress(await signers[1].getAddress());
     const agentTagData = new podsdk.WriteBuffer().writeBool(true).getBytes();
     const agentTagTx = await podDBC.setTag(
       agentTagClassEvt.ClassId,
@@ -441,10 +439,7 @@ describe("PodDB", async function () {
       fieldBuilder.getFieldTypes(),
       "testTagClass",
       {
-        agent: new TagAgentBuilder(
-          podsdk.AgentType.Tag,
-          agentTagClassEvt.ClassId
-        ).build(),
+        agent: TagAgent.fromTagClass(agentTagClassEvt.ClassId),
       }
     );
     tagClassTx.wait();
@@ -458,7 +453,7 @@ describe("PodDB", async function () {
       JSON.stringify(newTagClassEvt, undefined, 2)
     );
 
-    const tagObject = buildTagObject(await signers[1].getAddress(), 112);
+    const tagObject = TagObject.fromNFT(await signers[1].getAddress(), 112);
     const data = new podsdk.WriteBuffer().writeString("Hello").getBytes();
 
     //can setTag
@@ -493,7 +488,7 @@ describe("PodDB", async function () {
     );
     const newTagClassEvt = await podDBC.parseNewTagClassLog(rcp.logs[0]);
 
-    const tagObject = buildTagObject(await signers[1].getAddress());
+    const tagObject = TagObject.fromAddress(await signers[1].getAddress());
     const data = new podsdk.WriteBuffer().writeString("Hello").getBytes();
     const setTagTx = await podDBC.setTag(
       newTagClassEvt.ClassId,
@@ -529,7 +524,7 @@ describe("PodDB", async function () {
     );
     const newTagClassEvt = await podDBC.parseNewTagClassLog(rcp.logs[0]);
 
-    const tagObject = buildTagObject(await signers[1].getAddress());
+    const tagObject = TagObject.fromNFT(await signers[1].getAddress(), 0);
     const setTagTx = await podDBC.setTag(
       newTagClassEvt.ClassId,
       tagObject,
@@ -546,10 +541,13 @@ describe("PodDB", async function () {
     const setTagLog = await podDBC.parseSetTagLog(setTagReceipt.logs[0]);
     console.log("SetTag:", JSON.stringify(setTagLog, undefined, 2));
 
-    let hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObject);
+    let hasTag = await podDBC.hasTag(
+      newTagClassEvt.ClassId,
+      TagObject.fromAddress(await signers[1].getAddress())
+    );
     expect(hasTag).to.false;
 
-    const tagObjectNft = buildTagObject(await signers[1].getAddress(), 1);
+    const tagObjectNft = TagObject.fromNFT(await signers[1].getAddress(), 1);
     hasTag = await podDBC.hasTag(newTagClassEvt.ClassId, tagObjectNft);
 
     const tag = await podDBC.getTagByObject(
@@ -582,7 +580,7 @@ describe("PodDB", async function () {
       JSON.stringify(newTagClassEvt, undefined, 2)
     );
 
-    const tagObject = buildTagObject(await signers[1].getAddress());
+    const tagObject = TagObject.fromAddress(await signers[1].getAddress());
     const setTagTx = await podDBC.setTag(
       newTagClassEvt.ClassId,
       tagObject,
@@ -628,7 +626,7 @@ describe("PodDB", async function () {
       JSON.stringify(newTagClassEvt, undefined, 2)
     );
 
-    const tagObject = buildTagObject(await signers[1].getAddress());
+    const tagObject = TagObject.fromAddress(await signers[1].getAddress());
     const setTagTx = await podDBC.setTag(
       newTagClassEvt.ClassId,
       tagObject,

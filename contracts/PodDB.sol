@@ -123,8 +123,7 @@ contract PodDB is Ownable, IPodDB {
             tag.ClassId = tagClassId;
             return (tag, valid);
         }
-        if (object.TokenId == uint256(0)) {
-            //not nft
+        if (object.Type != ObjectType.NFT) {
             return (tag, valid);
         }
 
@@ -163,7 +162,11 @@ contract PodDB is Ownable, IPodDB {
         if (tagClass.Agent.Type == AgentType.Address) {
             return tagClass.Agent.Agent == bytes20(msg.sender);
         }
-        TagObject memory object = TagObject(msg.sender, uint256(0));
+        TagObject memory object = TagObject(
+            ObjectType.TagClass,
+            msg.sender,
+            uint256(0)
+        );
         return this.hasTag(tagClass.Agent.Agent, object);
     }
 
@@ -244,8 +247,8 @@ contract PodDB is Ownable, IPodDB {
 
         bool wildcardObject = TagFlags.hasWildcardFlag(tagFlags);
         require(
-            !wildcardObject || object.TokenId == 0,
-            "PODDB: tokenId should be zero, when has wildcard flag"
+            !wildcardObject || object.Type == ObjectType.NFT,
+            "PODDB: tagObject must be NFT, when has wildcard flag"
         );
 
         tagId = genTagId(tagClassId, object, wildcardObject);
@@ -321,10 +324,12 @@ contract PodDB is Ownable, IPodDB {
     ) internal pure returns (bytes20 id) {
         WriteBuffer.buffer memory wBuf;
         wBuf.init(96).writeBytes20(classId).writeAddress(object.Address);
-        if (wildcardObject) {
-            wBuf.writeUint16(1);
-        } else if (object.TokenId != uint256(0)) {
-            wBuf.writeUint256(object.TokenId);
+        if (object.Type == ObjectType.NFT) {
+            if (wildcardObject) {
+                wBuf.writeUint8(1);
+            } else {
+                wBuf.writeUint256(object.TokenId);
+            }
         }
         return bytes20(keccak256(wBuf.getBytes()));
     }

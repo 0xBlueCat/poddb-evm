@@ -39,7 +39,7 @@ library Serialization {
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 44 + tagClass.FieldTypes.length;
+        uint256 count = 46 + tagClass.FieldTypes.length;
         wBuf
             .init(count)
             .writeUint8(tagClass.Version)
@@ -89,7 +89,7 @@ library Serialization {
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 5 +
+        uint256 count = 7 +
             bytes(classInfo.TagName).length +
             bytes(classInfo.FieldNames).length +
             bytes(classInfo.Desc).length;
@@ -129,7 +129,7 @@ library Serialization {
         returns (bytes memory)
     {
         WriteBuffer.buffer memory wBuf;
-        uint256 count = 5 + tag.Data.length;
+        uint256 count = 7 + tag.Data.length;
         wBuf.init(count);
         wBuf.writeUint8(tag.Version).writeUint32(tag.ExpiredAt).writeBytes(
             tag.Data

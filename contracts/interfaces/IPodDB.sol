@@ -32,7 +32,7 @@ interface IPodDB {
     struct TagClass {
         bytes20 ClassId;
         uint8 Version;
-        address Owner; // user address or contract address
+        address Owner; // EOA address or CA address
         bytes FieldTypes; //field types
         //TagClass Flags:
         //0x60:deprecated flag, if a TagClass is marked as deprecated, you cannot set Tag under this TagClass
@@ -57,19 +57,26 @@ interface IPodDB {
     }
 
     enum AgentType {
-        Address, // user address or contract address,
-        Tag //address which had this tag
+        Address, // eoa address or ca address,
+        Tag //address which have this tag
     }
 
-    //TagClassAgent can delegate tagClass owner permission to another contract or address which had an special tag
+    //TagClassAgent can delegate tagClass owner permission to agent
     struct TagAgent {
-        AgentType Type; //indicate the of the of agent
-        bytes20 Agent; //agent have the same permission with the tagClass owner
+        AgentType Type; //indicate the type of agent
+        bytes20 Agent; //agent have the setTag permission
+    }
+
+    enum ObjectType {
+        Address, // eoa address or ca address
+        NFT, // nft
+        TagClass // tagClass
     }
 
     struct TagObject {
-        address Address; //EOA address, contract address, even tagClassId
-        uint256 TokenId; //NFT tokenId, if TokenId != 0, TagObject is NFT, or is a EOA address or contract
+        ObjectType Type; //indicate the type of object
+        address Address; //EOA address, CA address, or tagClassId
+        uint256 TokenId; //NFT tokenId
     }
 
     event NewTagClass(
